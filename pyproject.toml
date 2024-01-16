@@ -2,6 +2,7 @@
 useLibraryCodeForTypes = true
 analyzeUnannotatedFunctions = false
 reportUnnecessaryCast = "information"
+reportUnusedExpression = false
 reportUnnecessaryTypeIgnoreComment = "information"
 
 [tool.ruff]
@@ -16,7 +17,7 @@ select = [
   "C417",
   "E741",
   "EM",
-  "F401",
+  # "F401",
   "F841",
   "FBT",
   "G004",
