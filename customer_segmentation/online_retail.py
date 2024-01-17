@@ -6,6 +6,7 @@
 
 # %%
 from pathlib import Path
+from typing import cast
 
 import pandas as pd
 
@@ -19,5 +20,63 @@ assert file_path.exists(), "file doesn't exist"
 assert file_path.is_file(), "not a file"
 
 # %%
-df = pd.read_excel(file_path)
+# Columns I'll actually use
+cols = ["InvoiceNo", "InvoiceDate", "CustomerID", "Quantity", "UnitPrice"]
+df = pd.read_excel(
+    file_path,
+    usecols=cols,
+    dtype={col: object for col in cols},
+).loc[:, cols]
+df = cast(pd.DataFrame, df)
+
+# %%
 df.info()
+
+# %% [markdown]
+# ## Data cleaning
+
+# %%
+# Missing values
+df.isna().sum()
+
+# %% [markdown]
+# I really need to know who bought what. In other words, rows with missing
+# `CustomerID` have to go.
+
+# %%
+df = df.dropna()
+df.info()
+
+# %%
+# Look for invalid quantities
+(df["Quantity"] <= 0).sum()
+
+# %% [markdown]
+# Not every row corresponds to a sale. When the invoice number starts with "C",
+# that transaction was canceled. That explains the observations with
+# non-positive quantities.
+
+# %%
+df["InvoiceNo"].astype(str).str.startswith("C").sum()
+
+# %% [markdown]
+# I chose to remove those rows:
+
+# %%
+df = df.loc[df["Quantity"] > 0, :]
+df = cast(pd.DataFrame, df)
+
+# Quick check
+assert df["InvoiceNo"].astype(str).str.startswith("C").sum() == 0, "there are remaining canceled transactions"
+
+# %%
+# Look for invalid prices
+(df["UnitPrice"] == 0.0).sum()
+
+# %% [markdown]
+# I don't know how to explain such values. They should make no difference. Then
+# I chose to drop them:
+
+# %%
+df = df.loc[df["UnitPrice"] != 0.0, :]
+df = cast(pd.DataFrame, df)
