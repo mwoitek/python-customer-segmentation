@@ -1,7 +1,8 @@
 # %% [markdown]
-# # Online Retail Dataset
-
-# %% [markdown]
+# # Online Retail Dataset: Data Preparation
+#
+# In this notebook, I'll prepare the dataset for analysis.
+#
 # ## Imports
 
 # %%
@@ -24,12 +25,16 @@ assert file_path.is_file(), "not a file"
 # %%
 # Columns I'll actually use
 cols = ["InvoiceNo", "InvoiceDate", "CustomerID", "Quantity", "UnitPrice"]
+
 df = pd.read_excel(
     file_path,
     usecols=cols,
     dtype={col: object for col in cols},
 ).loc[:, cols]
 df = cast(pd.DataFrame, df)
+
+# %%
+df.head(10)
 
 # %%
 df.info()
@@ -146,8 +151,7 @@ del df_func
 
 # %% [markdown]
 # ## Aggregate data
-
-# %% [markdown]
+#
 # Before aggregating the data, I'll do some more consistency tests. Rows with
 # the same `InvoiceNo` must also have the same `InvoiceDate`. For a specific
 # value of `InvoiceNo`, this can be tested as follows:
@@ -214,3 +218,19 @@ df_total = df.groupby(by="InvoiceNo", observed=True).apply(compute_total_price).
 
 # %%
 df_total.head()
+
+# %%
+df_total.info()
+
+# %% [markdown]
+# ## Save prepared data
+#
+# Clearly, I've ended up with a much smaller dataset than the original. To
+# avoid having to repeat the above steps, I'll save the new `DataFrame` to a
+# CSV file.
+
+# %%
+# File path for output CSV
+out_file = file_path.parent / "online_retail.csv"
+
+df_total.to_csv(out_file, index=False)
