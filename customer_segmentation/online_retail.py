@@ -143,3 +143,74 @@ def get_clean_data(file_path: Path) -> pd.DataFrame:
 df_func = get_clean_data(file_path)
 assert_frame_equal(df_func, df)
 del df_func
+
+# %% [markdown]
+# ## Aggregate data
+
+# %% [markdown]
+# Before aggregating the data, I'll do some more consistency tests. Rows with
+# the same `InvoiceNo` must also have the same `InvoiceDate`. For a specific
+# value of `InvoiceNo`, this can be tested as follows:
+
+# %%
+df.loc[df["InvoiceNo"] == 536365, "InvoiceDate"].nunique() == 1
+
+# %% [markdown]
+# To test all values of `InvoiceNo`, one can do the following:
+
+# %%
+df.groupby(by="InvoiceNo", observed=True).InvoiceDate.nunique().eq(1).all()
+
+# %% [markdown]
+# Similarly, rows with the same `InvoiceNo` must also have the same
+# `CustomerID`. Checking if this is true:
+
+# %%
+# Single value
+df.loc[df["InvoiceNo"] == 536365, "CustomerID"].nunique() == 1
+
+# %%
+# All values
+df.groupby(by="InvoiceNo", observed=True).CustomerID.nunique().eq(1).all()
+
+# %% [markdown]
+# Everything is OK. Then I'll compute the total amount spent for each
+# `InvoiceNo`.
+
+# %%
+# Figuring out how to do it
+tmp_df = df.loc[df["InvoiceNo"] == 536365, :]
+tmp_df = cast(pd.DataFrame, tmp_df)
+tmp_df
+
+# %%
+tmp_row = pd.Series(
+    data={
+        "InvoiceDate": tmp_df["InvoiceDate"].iloc[0],
+        "CustomerID": tmp_df["CustomerID"].iloc[0],
+        "TotalPrice": (tmp_df["Quantity"] * tmp_df["UnitPrice"]).sum(),
+    }
+)
+tmp_row
+
+# %%
+del tmp_df
+del tmp_row
+
+
+# %%
+# Actual calculation
+def compute_total_price(df_group: pd.DataFrame) -> pd.Series:
+    return pd.Series(
+        data={
+            "InvoiceDate": df_group["InvoiceDate"].iloc[0],
+            "CustomerID": df_group["CustomerID"].iloc[0],
+            "TotalPrice": (df_group["Quantity"] * df_group["UnitPrice"]).sum(),
+        }
+    )
+
+
+df_total = df.groupby(by="InvoiceNo", observed=True).apply(compute_total_price).reset_index()
+
+# %%
+df_total.head()
