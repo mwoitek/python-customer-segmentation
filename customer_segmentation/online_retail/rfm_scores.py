@@ -11,6 +11,7 @@ from typing import cast
 
 import numpy as np
 import pandas as pd
+from pandas.testing import assert_index_equal, assert_series_equal
 
 # %% [markdown]
 # ## Read prepared dataset
@@ -84,4 +85,47 @@ df_rfm = cast(pd.DataFrame, df_rfm)
 df_rfm["Recency"] = (today - df_rfm["LastPurchaseDate"]).dt.days
 df_rfm = df_rfm.drop(columns="LastPurchaseDate")
 
+df_rfm.head()
+
+# %% [markdown]
+# ### Frequency
+#
+# Here I'll use the following definition of frequency: for a given customer,
+# frequency is the total number of purchases he/she made. Figuring out the best
+# way to evaluate this metric:
+
+# %%
+# Frequency for a particular customer
+df[df["CustomerID"] == "14688"].shape[0]
+
+# %%
+df.loc[df["CustomerID"] == "14688", "InvoiceNo"].nunique()
+
+# %%
+# Frequency for all customers
+freq_1 = df.groupby(by="CustomerID", observed=True).InvoiceNo.count()
+freq_1 = cast(pd.Series, freq_1)
+freq_1.name = "Frequency"
+freq_1.head()
+
+# %%
+freq_1.loc["14688"]
+
+# %%
+freq_2 = df.groupby(by="CustomerID", observed=True).InvoiceNo.nunique()
+freq_2 = cast(pd.Series, freq_2)
+freq_2.name = "Frequency"
+freq_2.head()
+
+# %%
+assert_series_equal(freq_1, freq_2)
+
+# %% [markdown]
+# The two methods used above are equivalent. Then I'll calculate the frequency
+# with the aid of the simplest one:
+
+# %%
+assert_index_equal(df_rfm.index, freq_1.index)
+
+df_rfm["Frequency"] = df.groupby(by="CustomerID", observed=True).InvoiceNo.count()
 df_rfm.head()
