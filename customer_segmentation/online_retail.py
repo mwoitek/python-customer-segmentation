@@ -18,9 +18,9 @@ from pandas.testing import assert_frame_equal
 
 # %%
 # File path for dataset
-file_path = Path.cwd() / "data" / "online_retail.xlsx"
-assert file_path.exists(), "file doesn't exist"
-assert file_path.is_file(), "not a file"
+file_path = Path.cwd().parents[0] / "data" / "online_retail.xlsx"
+assert file_path.exists(), f"file doesn't exist: {file_path}"
+assert file_path.is_file(), f"not a file: {file_path}"
 
 # %%
 # Columns I'll actually use
