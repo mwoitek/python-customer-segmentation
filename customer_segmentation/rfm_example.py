@@ -156,3 +156,42 @@ df_m
 
 # %% [markdown]
 # Notice that these results agree with the reference values.
+#
+# ## RFM score
+#
+# Next, we'll combine the results obtained above to calculate the RFM scores.
+# More precisely, we'll reproduce the following table:
+#
+# ![RFM scores](./rfm_example_4.png)
+#
+# As already explained, our results for the F score are different. For this
+# reason, two rows in this table won't be reproduced exactly. But our values
+# will be very close.
+
+# %%
+# Concatenate scores from different DataFrames
+df_rfm = pd.concat(
+    [df_r["RScore"], df_f["FScore"], df_m["MScore"]],
+    axis=1,
+)
+df_rfm = df_rfm.sort_index()
+df_rfm = df_rfm.astype(np.int_)
+df_rfm
+
+# %%
+# Compute RFM cells
+df_rfm["RFMCell"] = df_rfm.agg(
+    lambda r: f"{r.iloc[0]},{r.iloc[1]},{r.iloc[2]}",
+    axis="columns",
+)
+df_rfm
+
+# %%
+# Compute RFM scores
+df_rfm["RFMScore"] = df_rfm.iloc[:, :3].agg("mean", axis="columns")
+df_rfm.loc[:, ["RFMCell", "RFMScore"]]
+
+# %% [markdown]
+# Notice that these results agree with the reference values, except for the
+# rows with `CustomerId` 7 and 13. As expected, the difference is in the F
+# score values.
