@@ -13,6 +13,8 @@ import numpy as np
 import pandas as pd
 from pandas.testing import assert_frame_equal, assert_index_equal, assert_series_equal
 
+from utils.rfm import add_rfm_scores
+
 # %% [markdown]
 # ## Read prepared dataset
 
@@ -220,3 +222,16 @@ assert_frame_equal(rfm_attrs, df_rfm)
 # %%
 del prepared_data
 del rfm_attrs
+
+# %% [markdown]
+# ## Compute RFM scores
+#
+# Finally, it's possible to compute the RFM scores. To do so, I'll use the
+# `add_rfm_scores` function that I defined in the `utils` package:
+
+# %%
+df_rfm = add_rfm_scores(df_rfm)
+df_rfm.head()
+
+# %%
+df_rfm.info()
