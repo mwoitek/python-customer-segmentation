@@ -11,7 +11,7 @@ from typing import cast
 
 import numpy as np
 import pandas as pd
-from pandas.testing import assert_index_equal, assert_series_equal
+from pandas.testing import assert_frame_equal, assert_index_equal, assert_series_equal
 
 # %% [markdown]
 # ## Read prepared dataset
@@ -162,3 +162,61 @@ df_rfm.head()
 
 # %%
 df_rfm.info()
+
+# %%
+# Quick consistency checks
+assert (df_rfm["Recency"] > 0).all()
+assert (df_rfm["Frequency"] > 0).all()
+assert (df_rfm["Monetary"] > 0.0).all()
+
+# %% [markdown]
+# ### Summarizing through functions
+#
+# At this point, all RFM attributes have been evaluated. Before proceeding,
+# let's collect the essential parts of the above code, and transform them into
+# a couple of functions.
+
+
+# %%
+def read_prepared_data(file_path: Path) -> pd.DataFrame:
+    return pd.read_csv(
+        file_path,
+        dtype={
+            "InvoiceNo": "category",
+            "CustomerID": "category",
+            "TotalPrice": np.float_,
+        },
+        parse_dates=["InvoiceDate"],
+    )
+
+
+# %%
+def compute_rfm_attributes(df: pd.DataFrame) -> pd.DataFrame:
+    customer_groups = df.groupby(by="CustomerID", observed=True)
+
+    today = df["InvoiceDate"].max() + pd.Timedelta(days=1)
+    today = cast(pd.Timestamp, today)
+
+    df_rfm = customer_groups.InvoiceDate.max().to_frame().rename(columns={"InvoiceDate": "LastPurchaseDate"})
+    df_rfm = cast(pd.DataFrame, df_rfm)
+    df_rfm["Recency"] = (today - df_rfm["LastPurchaseDate"]).dt.days
+    df_rfm = df_rfm.drop(columns="LastPurchaseDate")
+
+    df_rfm["Frequency"] = customer_groups.InvoiceNo.count()
+    df_rfm["Monetary"] = customer_groups.TotalPrice.sum()
+
+    return df_rfm
+
+
+# %%
+# Quick tests
+prepared_data = read_prepared_data(file_path)
+assert_frame_equal(prepared_data, df)
+
+# %%
+rfm_attrs = compute_rfm_attributes(prepared_data)
+assert_frame_equal(rfm_attrs, df_rfm)
+
+# %%
+del prepared_data
+del rfm_attrs
