@@ -244,3 +244,23 @@ df_rfm.info()
 out_file = file_path.parent / "rfm_scores.csv"
 
 df_rfm.to_csv(out_file, index=True)
+
+# %% [markdown]
+# ## Summarizing through a function
+#
+# The RFM analysis isn't complete yet. But I've already achieved my goal for
+# this notebook. As usual, I'll conclude by writing a function that summarizes
+# what I just did.
+
+
+# %%
+def compute_and_save_rfm_scores(file_path: Path, num_bins: int = 5) -> None:
+    prepared_data = read_prepared_data(file_path)
+    df_rfm = compute_rfm_attributes(prepared_data)
+    df_rfm = add_rfm_scores(df_rfm, num_bins)
+    out_file = file_path.parent / f"rfm_scores_{num_bins}.csv"
+    df_rfm.to_csv(out_file, index=True)
+
+
+# %%
+# compute_and_save_rfm_scores(Path.cwd().parents[1] / "data" / "online_retail.csv", num_bins=5)
