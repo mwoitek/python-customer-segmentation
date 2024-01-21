@@ -234,3 +234,21 @@ df_total.info()
 out_file = file_path.parent / "online_retail.csv"
 
 df_total.to_csv(out_file, index=False)
+
+# %% [markdown]
+# ## Summarizing through a function
+#
+# To conclude, I'll implement a function that summarizes what was done in
+# this notebook.
+
+
+# %%
+def prepare_and_save_data(file_path: Path) -> None:
+    clean_data = get_clean_data(file_path)
+    aggregated_data = clean_data.groupby("InvoiceNo", observed=True).apply(compute_total_price).reset_index()
+    out_file = file_path.with_suffix(".csv")
+    aggregated_data.to_csv(out_file, index=False)
+
+
+# %%
+# prepare_and_save_data(Path.cwd().parents[1] / "data" / "online_retail.xlsx")
