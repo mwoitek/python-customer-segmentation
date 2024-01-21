@@ -4,6 +4,8 @@ from typing import cast
 import numpy as np
 import pandas as pd
 
+from utils.rfm import add_rfm_scores
+
 
 def get_clean_data(file_path: Path) -> pd.DataFrame:
     cols = ["InvoiceNo", "InvoiceDate", "CustomerID", "Quantity", "UnitPrice"]
@@ -45,3 +47,40 @@ def prepare_and_save_data(file_path: Path) -> None:
     aggregated_data = clean_data.groupby("InvoiceNo", observed=True).apply(compute_total_price).reset_index()
     out_file = file_path.with_suffix(".csv")
     aggregated_data.to_csv(out_file, index=False)
+
+
+def read_prepared_data(file_path: Path) -> pd.DataFrame:
+    return pd.read_csv(
+        file_path,
+        dtype={
+            "InvoiceNo": "category",
+            "CustomerID": "category",
+            "TotalPrice": np.float_,
+        },
+        parse_dates=["InvoiceDate"],
+    )
+
+
+def compute_rfm_attributes(df: pd.DataFrame) -> pd.DataFrame:
+    customer_groups = df.groupby(by="CustomerID", observed=True)
+
+    today = df["InvoiceDate"].max() + pd.Timedelta(days=1)
+    today = cast(pd.Timestamp, today)
+
+    df_rfm = customer_groups.InvoiceDate.max().to_frame().rename(columns={"InvoiceDate": "LastPurchaseDate"})
+    df_rfm = cast(pd.DataFrame, df_rfm)
+    df_rfm["Recency"] = (today - df_rfm["LastPurchaseDate"]).dt.days
+    df_rfm = df_rfm.drop(columns="LastPurchaseDate")
+
+    df_rfm["Frequency"] = customer_groups.InvoiceNo.count()
+    df_rfm["Monetary"] = customer_groups.TotalPrice.sum()
+
+    return df_rfm
+
+
+def compute_and_save_rfm_scores(file_path: Path, num_bins: int = 5) -> None:
+    prepared_data = read_prepared_data(file_path)
+    df_rfm = compute_rfm_attributes(prepared_data)
+    df_rfm = add_rfm_scores(df_rfm, num_bins)
+    out_file = file_path.parent / f"rfm_scores_{num_bins}.csv"
+    df_rfm.to_csv(out_file, index=True)
