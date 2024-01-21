@@ -129,3 +129,36 @@ assert_index_equal(df_rfm.index, freq_1.index)
 
 df_rfm["Frequency"] = df.groupby(by="CustomerID", observed=True).InvoiceNo.count()
 df_rfm.head()
+
+# %% [markdown]
+# ### Monetary
+#
+# Here I'll use the following definition of monetary: for a given customer,
+# monetary corresponds to the total amount spent by him/her. Figuring out the
+# best way to evaluate this quantity:
+
+# %%
+# Monetary for a particular customer
+df.loc[df["CustomerID"] == "14688", "TotalPrice"].sum()
+
+# %%
+# Monetary for all customers
+monetary = df.groupby(by="CustomerID", observed=True).TotalPrice.sum()
+monetary = cast(pd.Series, monetary)
+monetary.head()
+
+# %%
+monetary.loc["14688"]
+
+# %% [markdown]
+# Now that I understand how to perform the desired calculation, I'll add
+# monetary to my DataFrame:
+
+# %%
+assert_index_equal(df_rfm.index, monetary.index)
+
+df_rfm["Monetary"] = df.groupby(by="CustomerID", observed=True).TotalPrice.sum()
+df_rfm.head()
+
+# %%
+df_rfm.info()
