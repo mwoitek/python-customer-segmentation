@@ -235,3 +235,12 @@ df_rfm.head()
 
 # %%
 df_rfm.info()
+
+# %% [markdown]
+# ## Save computed scores
+
+# %%
+# File path for output CSV
+out_file = file_path.parent / "rfm_scores.csv"
+
+df_rfm.to_csv(out_file, index=True)
