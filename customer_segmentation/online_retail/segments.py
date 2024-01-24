@@ -61,7 +61,7 @@ df_rfm["RScore"].head()
 #
 # Next, we'll divide the customers into segments. Unfortunately, there's no
 # single way to do this. More precisely, there are several ways to assign
-# meaning to RFM scores. In this notebook, we'll adapt the approach described
+# meaning to RFM scores. In this notebook, we'll **adapt** the approach described
 # in this [blog post](https://nealanalytics.com/blog/customer-segmentation-using-rfm-analysis/).
 #
 # Specifically, we'll consider the following 11 segments:
@@ -82,6 +82,9 @@ df_rfm["RScore"].head()
 # instance, we believe some of them are too broad. But these segments are the
 # closest thing to a standard that we could find. They are also discussed
 # [here](https://documentation.bloomreach.com/engagement/docs/rfm-segmentation).
+# However, we've taken the liberty to redefine some segments. In our opinion,
+# not all original definitions make complete sense. This doesn't mean our
+# definitions are flawless. But we believe they are an improvement.
 #
 # ### Champions
 #
@@ -114,18 +117,18 @@ cells_1 = [
 
 # %%
 cells_2 = [
+    "5,5,3",
     "5,4,3",
+    "5,3,5",
+    "4,5,3",
     "4,4,4",
+    "4,4,3",
     "4,3,5",
     "3,5,5",
     "3,5,4",
     "3,4,5",
     "3,4,4",
     "3,3,5",
-    # Originally in "Potential Loyalists"
-    "5,5,3",
-    "5,3,3",
-    "4,5,3",
 ]
 
 # %% [markdown]
@@ -147,11 +150,11 @@ cells_2 = [
 
 # %%
 cells_3 = [
-    # Given the definition of "Loyal", these values make sense
     "5,5,2",
     "5,5,1",
     "5,4,2",
     "5,4,1",
+    "5,3,3",
     "5,3,2",
     "5,3,1",
     "4,5,2",
@@ -164,24 +167,100 @@ cells_3 = [
     "3,5,3",
     "3,5,2",
     "3,5,1",
-    "3,4,2",
-    "3,4,1",
-    # These values seem out of place
-    "4,2,3",
-    "3,3,3",
-    "3,2,3",
+    # FIXME: Move to another segment
+    # "3,4,2",
+    # "3,4,1",
 ]
 
 # %% [markdown]
 # This segment has many cases. This is problematic, because describing it is
 # complicated. But let's try. First, notice that the R scores are in the range
 # 3-5. Then it's fair to say that these are recent customers. Furthermore,
-# frequency values range (mostly) from medium to high. For the most part, we're
-# talking about frequent customers. So far, we have a similar situation to that
-# of "Loyal" customers. The difference is in the values for the M scores. For
-# this segment, these scores are in the 1-3 range. Therefore, "Potential
-# Loyalists" can be described as follows: **recent, frequent customers with
-# medium to low monetary value**.
+# frequency values range from medium to high. We're talking about frequent
+# customers. So far, we have a similar situation to that of "Loyal" customers.
+# The difference is in the values for the M scores. For this segment, these
+# scores are in the 1-3 range. Therefore, "Potential Loyalists" can be
+# described as follows: **recent, frequent customers with medium to low
+# monetary value**.
 
 # %%
 # TODO: Label customers
+
+# %% [markdown]
+# ### New Customers
+#
+# For this segment, the `RFMCell` values are
+
+# %%
+cells_4 = [
+    "5,2,2",
+    "5,2,1",
+    "5,1,2",
+    "5,1,1",
+    "4,2,2",
+    "4,2,1",
+    "4,1,2",
+    "4,1,1",
+    # FIXME: Move to another segment
+    # "3,1,1",
+]
+
+# %% [markdown]
+# By inspecting the above list, one can see that basically we have high
+# recency, and low frequency and monetary values. Therefore, the name of this
+# segment is appropriate. No further explanation is required.
+
+# %%
+# TODO: Label customers
+
+# %% [markdown]
+# ### Promising
+#
+# "Promising" customers are characterized by the following values of `RFMCell`:
+
+# %%
+cells_5 = [
+    "5,2,5",
+    "5,2,4",
+    "5,2,3",
+    "5,1,5",
+    "5,1,4",
+    "5,1,3",
+    "4,2,5",
+    "4,2,4",
+    "4,2,3",
+    "4,1,5",
+    "4,1,4",
+    "4,1,3",
+    "3,1,5",
+    "3,1,4",
+    "3,1,3",
+]
+
+# %% [markdown]
+# In this case, we have medium to high values for the R and M scores. So these
+# are recent customers who spent a good amount. However, the frequency values
+# are low. These customers didn't buy many times. Therefore, they're
+# "Promising" in the following sense: **if they make more purchases, they'll be
+# among the best customers**.
+
+# %%
+# TODO: Label customers
+
+# %% [markdown]
+# ### Need Attention
+#
+# TODO
+
+# %%
+cells_6 = [
+    "3,3,4",
+    "3,3,3",
+    "3,2,5",
+    "3,2,4",
+    "3,2,3",
+    # FIXME: Move to another segment
+    # "5,3,4",
+    # "4,3,4",
+    # "3,4,3",
+]
