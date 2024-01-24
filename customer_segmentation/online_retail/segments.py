@@ -9,6 +9,7 @@
 
 # %%
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -167,9 +168,8 @@ cells_3 = [
     "3,5,3",
     "3,5,2",
     "3,5,1",
-    # FIXME: Move to another segment
-    # "3,4,2",
-    # "3,4,1",
+    "3,4,2",
+    "3,4,1",
 ]
 
 # %% [markdown]
@@ -201,8 +201,6 @@ cells_4 = [
     "4,2,1",
     "4,1,2",
     "4,1,1",
-    # FIXME: Move to another segment
-    # "3,1,1",
 ]
 
 # %% [markdown]
@@ -260,7 +258,172 @@ cells_6 = [
     "3,2,4",
     "3,2,3",
     # FIXME: Move to another segment
-    # "5,3,4",
-    # "4,3,4",
-    # "3,4,3",
+    "5,3,4",
+    "4,3,4",
+    "3,4,3",
 ]
+
+# %% [markdown]
+# ### About to Sleep
+#
+# TODO
+
+# %%
+cells_7 = [
+    "3,3,1",
+    "3,2,1",
+    "3,1,2",
+    "2,5,1",
+    "2,4,1",
+    "2,3,1",
+    "2,2,1",
+    "2,1,3",
+]
+
+# %% [markdown]
+# ### Cannot Lose Them
+#
+# TODO
+
+# %%
+cells_8 = [
+    "2,1,5",
+    "2,1,4",
+    "1,5,5",
+    "1,5,4",
+    "1,4,4",
+    "1,1,5",
+    "1,1,4",
+    "1,1,3",
+]
+
+# %% [markdown]
+# ### At Risk
+#
+# TODO
+
+# %%
+cells_9 = [
+    "2,5,5",
+    "2,5,4",
+    "2,5,3",
+    "2,5,2",
+    "2,4,5",
+    "2,4,4",
+    "2,4,3",
+    "2,4,2",
+    "2,3,5",
+    "2,3,4",
+    "2,2,5",
+    "2,2,4",
+    "1,5,3",
+    "1,5,2",
+    "1,4,5",
+    "1,4,3",
+    "1,4,2",
+    "1,3,5",
+    "1,3,4",
+    "1,3,3",
+    "1,2,5",
+    "1,2,4",
+]
+
+# %% [markdown]
+# ### Hibernating
+#
+# For this segment, the values of `RFMCell` are
+
+# %%
+cells_10 = [
+    "3,3,2",
+    "3,2,2",
+    "3,1,1",
+    "2,3,3",
+    "2,3,2",
+    "2,2,3",
+    "2,2,2",
+    "2,1,2",
+    "2,1,1",
+    "1,3,2",
+    "1,2,3",
+    "1,2,2",
+]
+
+# %% [markdown]
+# In these cases, all scores are in the range 1-3. In other words, we have
+# medium to low values. Therefore, "Hibernating" customers can be described as
+# follows: **customers who made smaller and infrequent purchases before but
+# haven't purchased anything in a long time**.
+
+# %%
+# TODO: Label customers
+
+# %% [markdown]
+# ### Lost
+#
+# Finally, the last segment is characterized by
+
+# %%
+cells_11 = [
+    "1,5,1",
+    "1,4,1",
+    "1,3,1",
+    "1,2,1",
+    "1,1,2",
+    "1,1,1",
+]
+
+# %% [markdown]
+# Clearly, the scores above correspond to **customers who spent small amounts
+# but haven't purchased anything in a very long time**. Therefore, this segment
+# is appropriately named.
+
+# %%
+# TODO: Label customers
+
+# %% [markdown]
+# Checking if all values of `RFMCell` have been used:
+
+# %%
+# Join all lists I've defined
+all_cells: list[str] = []
+gl = globals()
+
+for i in range(1, 12):
+    cells = gl[f"cells_{i}"]
+    cells = cast(list[str], cells)
+    all_cells.extend(cells)
+
+del gl
+
+all_cells.sort(reverse=True)
+all_cells[:20]
+
+# %%
+# Generate all possible values
+vals = list(range(1, 6))
+df_1 = pd.DataFrame(data={"R": vals})
+df_2 = pd.DataFrame(data={"F": vals})
+df_3 = pd.DataFrame(data={"M": vals})
+
+df_tmp = (
+    df_1.merge(df_2, how="cross")
+    .merge(df_3, how="cross")
+    .sort_values(by=["R", "F", "M"], ascending=False)
+    .reset_index(drop=True)
+)
+df_tmp["RFMCell"] = df_tmp.agg(lambda r: f"{r.iloc[0]},{r.iloc[1]},{r.iloc[2]}", axis="columns")
+
+del vals
+del df_1
+del df_2
+del df_3
+
+df_tmp.head(20)
+
+# %%
+# Finally check
+assert all_cells == df_tmp["RFMCell"].to_list(), "not all values of RFMCell have been used"
+
+del all_cells
+del df_tmp
