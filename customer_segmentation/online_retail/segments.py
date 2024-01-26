@@ -13,6 +13,7 @@ from typing import cast
 
 import numpy as np
 import pandas as pd
+from pandas.testing import assert_series_equal
 
 # %% [markdown]
 # ## Read RFM scores
@@ -406,6 +407,9 @@ mask = df_rfm["RFMCell"].isin(cells_11)
 df_rfm.loc[mask, "Segment"] = "Lost"
 df_rfm.loc[mask, :].head()
 
+# %%
+del mask
+
 # %% [markdown]
 # ### Consistency checks
 #
@@ -460,3 +464,152 @@ assert all_cells == df_tmp["RFMCell"].to_list(), "not all values of RFMCell have
 
 del all_cells
 del df_tmp
+
+# %% [markdown]
+# ### Better way to label customers
+
+# %%
+# Define all segments at once
+SEGMENTS_5 = {
+    "5,5,5": "Champions",
+    "5,5,4": "Champions",
+    "5,4,5": "Champions",
+    "5,4,4": "Champions",
+    "4,5,5": "Champions",
+    "4,5,4": "Champions",
+    "4,4,5": "Champions",
+    "5,4,3": "Loyal",
+    "4,4,4": "Loyal",
+    "4,3,5": "Loyal",
+    "3,5,5": "Loyal",
+    "3,5,4": "Loyal",
+    "3,4,5": "Loyal",
+    "3,4,4": "Loyal",
+    "3,3,5": "Loyal",
+    "5,5,3": "Potential Loyalists",
+    "5,5,2": "Potential Loyalists",
+    "5,5,1": "Potential Loyalists",
+    "5,4,2": "Potential Loyalists",
+    "5,4,1": "Potential Loyalists",
+    "5,3,3": "Potential Loyalists",
+    "5,3,2": "Potential Loyalists",
+    "5,3,1": "Potential Loyalists",
+    "4,5,3": "Potential Loyalists",
+    "4,5,2": "Potential Loyalists",
+    "4,5,1": "Potential Loyalists",
+    "4,4,2": "Potential Loyalists",
+    "4,4,1": "Potential Loyalists",
+    "4,3,3": "Potential Loyalists",
+    "4,3,2": "Potential Loyalists",
+    "4,3,1": "Potential Loyalists",
+    "4,2,3": "Potential Loyalists",
+    "3,5,3": "Potential Loyalists",
+    "3,5,2": "Potential Loyalists",
+    "3,5,1": "Potential Loyalists",
+    "3,4,2": "Potential Loyalists",
+    "3,4,1": "Potential Loyalists",
+    "3,3,3": "Potential Loyalists",
+    "3,2,3": "Potential Loyalists",
+    "5,1,2": "New Customers",
+    "5,1,1": "New Customers",
+    "4,2,2": "New Customers",
+    "4,2,1": "New Customers",
+    "4,1,2": "New Customers",
+    "4,1,1": "New Customers",
+    "3,1,1": "New Customers",
+    "5,2,5": "Promising",
+    "5,2,4": "Promising",
+    "5,2,3": "Promising",
+    "5,2,2": "Promising",
+    "5,2,1": "Promising",
+    "5,1,5": "Promising",
+    "5,1,4": "Promising",
+    "5,1,3": "Promising",
+    "4,2,5": "Promising",
+    "4,2,4": "Promising",
+    "4,1,5": "Promising",
+    "4,1,4": "Promising",
+    "4,1,3": "Promising",
+    "3,1,5": "Promising",
+    "3,1,4": "Promising",
+    "3,1,3": "Promising",
+    "5,3,5": "Need Attention",
+    "5,3,4": "Need Attention",
+    "4,4,3": "Need Attention",
+    "4,3,4": "Need Attention",
+    "3,4,3": "Need Attention",
+    "3,3,4": "Need Attention",
+    "3,2,5": "Need Attention",
+    "3,2,4": "Need Attention",
+    "3,3,1": "About to Sleep",
+    "3,2,1": "About to Sleep",
+    "3,1,2": "About to Sleep",
+    "2,2,1": "About to Sleep",
+    "2,1,3": "About to Sleep",
+    "2,1,5": "Cannot Lose Them",
+    "2,1,4": "Cannot Lose Them",
+    "1,5,5": "Cannot Lose Them",
+    "1,5,4": "Cannot Lose Them",
+    "1,4,4": "Cannot Lose Them",
+    "1,1,5": "Cannot Lose Them",
+    "1,1,4": "Cannot Lose Them",
+    "1,1,3": "Cannot Lose Them",
+    "2,5,5": "At Risk",
+    "2,5,4": "At Risk",
+    "2,5,3": "At Risk",
+    "2,5,2": "At Risk",
+    "2,4,5": "At Risk",
+    "2,4,4": "At Risk",
+    "2,4,3": "At Risk",
+    "2,4,2": "At Risk",
+    "2,3,5": "At Risk",
+    "2,3,4": "At Risk",
+    "2,2,5": "At Risk",
+    "2,2,4": "At Risk",
+    "1,5,3": "At Risk",
+    "1,5,2": "At Risk",
+    "1,4,5": "At Risk",
+    "1,4,3": "At Risk",
+    "1,4,2": "At Risk",
+    "1,3,5": "At Risk",
+    "1,3,4": "At Risk",
+    "1,3,3": "At Risk",
+    "1,2,5": "At Risk",
+    "1,2,4": "At Risk",
+    "3,3,2": "Hibernating",
+    "3,2,2": "Hibernating",
+    "2,5,1": "Hibernating",
+    "2,4,1": "Hibernating",
+    "2,3,3": "Hibernating",
+    "2,3,2": "Hibernating",
+    "2,3,1": "Hibernating",
+    "2,2,3": "Hibernating",
+    "2,2,2": "Hibernating",
+    "2,1,2": "Hibernating",
+    "2,1,1": "Hibernating",
+    "1,3,2": "Hibernating",
+    "1,2,3": "Hibernating",
+    "1,2,2": "Hibernating",
+    "1,5,1": "Lost",
+    "1,4,1": "Lost",
+    "1,3,1": "Lost",
+    "1,2,1": "Lost",
+    "1,1,2": "Lost",
+    "1,1,1": "Lost",
+}
+
+# %%
+# Remove "old" segments
+old_segments = df_rfm.pop("Segment")
+
+df_rfm.info()
+
+# %%
+# Label customers
+df_rfm["Segment"] = df_rfm["RFMCell"].map(SEGMENTS_5)
+
+# %%
+# Quick check
+assert_series_equal(df_rfm["Segment"], old_segments)
+
+del old_segments
