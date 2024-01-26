@@ -104,8 +104,19 @@ cells_1 = [
     "4,4,5",
 ]
 
+# %% [markdown]
+# Labeling customers:
+
 # %%
-# TODO: Label customers
+df_rfm["Segment"] = ""
+
+mask = df_rfm["RFMCell"].isin(cells_1)
+df_rfm.loc[mask, "Segment"] = "Champions"
+df_rfm.loc[mask, :].head()
+
+# %% [markdown]
+# **NOTE**: This isn't the best way to label customers. After introducing all
+# segments, we'll solve this problem more efficiently.
 
 # %% [markdown]
 # ### Loyal
@@ -124,8 +135,13 @@ cells_2 = [
     "3,3,5",
 ]
 
+# %% [markdown]
+# Labeling customers:
+
 # %%
-# TODO: Label customers
+mask = df_rfm["RFMCell"].isin(cells_2)
+df_rfm.loc[mask, "Segment"] = "Loyal"
+df_rfm.loc[mask, :].head()
 
 # %% [markdown]
 # ### Potential Loyalists
@@ -160,8 +176,13 @@ cells_3 = [
     "3,2,3",
 ]
 
+# %% [markdown]
+# Labeling customers:
+
 # %%
-# TODO: Label customers
+mask = df_rfm["RFMCell"].isin(cells_3)
+df_rfm.loc[mask, "Segment"] = "Potential Loyalists"
+df_rfm.loc[mask, :].head()
 
 # %% [markdown]
 # ### New Customers
@@ -179,8 +200,13 @@ cells_4 = [
     "3,1,1",
 ]
 
+# %% [markdown]
+# Labeling customers:
+
 # %%
-# TODO: Label customers
+mask = df_rfm["RFMCell"].isin(cells_4)
+df_rfm.loc[mask, "Segment"] = "New Customers"
+df_rfm.loc[mask, :].head()
 
 # %% [markdown]
 # ### Promising
@@ -207,8 +233,13 @@ cells_5 = [
     "3,1,3",
 ]
 
+# %% [markdown]
+# Labeling customers:
+
 # %%
-# TODO: Label customers
+mask = df_rfm["RFMCell"].isin(cells_5)
+df_rfm.loc[mask, "Segment"] = "Promising"
+df_rfm.loc[mask, :].head()
 
 # %% [markdown]
 # ### Need Attention
@@ -227,8 +258,13 @@ cells_6 = [
     "3,2,4",
 ]
 
+# %% [markdown]
+# Labeling customers:
+
 # %%
-# TODO: Label customers
+mask = df_rfm["RFMCell"].isin(cells_6)
+df_rfm.loc[mask, "Segment"] = "Need Attention"
+df_rfm.loc[mask, :].head()
 
 # %% [markdown]
 # ### About to Sleep
@@ -244,8 +280,13 @@ cells_7 = [
     "2,1,3",
 ]
 
+# %% [markdown]
+# Labeling customers:
+
 # %%
-# TODO: Label customers
+mask = df_rfm["RFMCell"].isin(cells_7)
+df_rfm.loc[mask, "Segment"] = "About to Sleep"
+df_rfm.loc[mask, :].head()
 
 # %% [markdown]
 # ### Cannot Lose Them
@@ -264,8 +305,13 @@ cells_8 = [
     "1,1,3",
 ]
 
+# %% [markdown]
+# Labeling customers:
+
 # %%
-# TODO: Label customers
+mask = df_rfm["RFMCell"].isin(cells_8)
+df_rfm.loc[mask, "Segment"] = "Cannot Lose Them"
+df_rfm.loc[mask, :].head()
 
 # %% [markdown]
 # ### At Risk
@@ -298,8 +344,13 @@ cells_9 = [
     "1,2,4",
 ]
 
+# %% [markdown]
+# Labeling customers:
+
 # %%
-# TODO: Label customers
+mask = df_rfm["RFMCell"].isin(cells_9)
+df_rfm.loc[mask, "Segment"] = "At Risk"
+df_rfm.loc[mask, :].head()
 
 # %% [markdown]
 # ### Hibernating
@@ -324,8 +375,13 @@ cells_10 = [
     "1,2,2",
 ]
 
+# %% [markdown]
+# Labeling customers:
+
 # %%
-# TODO: Label customers
+mask = df_rfm["RFMCell"].isin(cells_10)
+df_rfm.loc[mask, "Segment"] = "Hibernating"
+df_rfm.loc[mask, :].head()
 
 # %% [markdown]
 # ### Lost
@@ -342,12 +398,23 @@ cells_11 = [
     "1,1,1",
 ]
 
+# %% [markdown]
+# Labeling customers:
+
 # %%
-# TODO: Label customers
+mask = df_rfm["RFMCell"].isin(cells_11)
+df_rfm.loc[mask, "Segment"] = "Lost"
+df_rfm.loc[mask, :].head()
 
 # %% [markdown]
-# ### Consistency check
+# ### Consistency checks
 #
+# Confirm that every customer has been labeled:
+
+# %%
+assert (df_rfm["Segment"].str.len() > 0).all(), "there are unlabeled customers"
+
+# %% [markdown]
 # Checking if all values of `RFMCell` have been used:
 
 # %%
