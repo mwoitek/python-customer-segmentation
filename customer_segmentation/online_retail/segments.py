@@ -13,7 +13,7 @@ from typing import cast
 
 import numpy as np
 import pandas as pd
-from pandas.testing import assert_series_equal
+from pandas.testing import assert_frame_equal, assert_series_equal
 
 # %% [markdown]
 # ## Read RFM scores
@@ -38,6 +38,7 @@ df_rfm = pd.read_csv(
         "RFMCell": object,
         "RFMScore": np.float_,
     },
+    index_col="CustomerID",
 )
 df_rfm.head(15)
 
@@ -613,3 +614,75 @@ df_rfm["Segment"] = df_rfm["RFMCell"].map(SEGMENTS_5)
 assert_series_equal(df_rfm["Segment"], old_segments)
 
 del old_segments
+
+# %%
+# Make it categorical
+df_rfm["Segment"] = df_rfm["Segment"].astype("category")
+df_rfm["Segment"].cat.categories
+
+# %%
+# Quick checks
+assert not df_rfm["Segment"].cat.ordered
+
+num_categories_1: int = df_rfm["Segment"].cat.categories.shape[0]
+num_categories_2: int = len(set(SEGMENTS_5.values()))
+print(num_categories_1 == num_categories_2)
+del num_categories_1
+del num_categories_2
+
+# %% [markdown]
+# ### Save segment data
+
+# %%
+# File path for output CSV
+out_file = file_path.parent / "rfm_segments.csv"
+
+df_rfm.to_csv(out_file, index=True)
+
+# %% [markdown]
+# ## Summarizing through functions
+#
+# The above code seems to be doing what it's supposed to. So, as usual, we'll
+# collect the essential parts of this code, and define a couple of functions.
+
+
+# %%
+def read_rfm_scores(file_path: Path) -> pd.DataFrame:
+    df = pd.read_csv(
+        file_path,
+        dtype={
+            "CustomerID": "category",
+            "Recency": np.int_,
+            "Frequency": np.int_,
+            "Monetary": np.float_,
+            "RScore": "category",
+            "FScore": "category",
+            "MScore": "category",
+            "RFMCell": object,
+            "RFMScore": np.float_,
+        },
+        index_col="CustomerID",
+    )
+
+    score_cols = ["RScore", "FScore", "MScore"]
+    df.loc[:, score_cols] = df.loc[:, score_cols].transform(lambda col: col.cat.as_ordered())
+
+    return df
+
+
+# %%
+def label_customers(df: pd.DataFrame, segments_dict: dict[str, str]) -> pd.DataFrame:
+    return df.assign(Segment=df["RFMCell"].map(segments_dict).astype("category"))
+
+
+# %%
+# Quick check
+df_func = read_rfm_scores(file_path)
+assert_frame_equal(df_func, df_rfm.iloc[:, :-1])
+
+# %%
+df_func = label_customers(df_func, SEGMENTS_5)
+assert_frame_equal(df_func, df_rfm)
+
+# %%
+del df_func
