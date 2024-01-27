@@ -13,6 +13,7 @@ from typing import cast
 
 import numpy as np
 import pandas as pd
+from more_itertools import unique_everseen
 from pandas.testing import assert_frame_equal, assert_series_equal
 
 # %% [markdown]
@@ -686,3 +687,61 @@ assert_frame_equal(df_func, df_rfm)
 
 # %%
 del df_func
+
+# %% [markdown]
+# ## Customers by segment
+
+# %%
+# Number of customers
+num_customers = df_rfm["Segment"].value_counts()
+num_customers = cast(pd.Series, num_customers)
+num_customers
+
+# %%
+# Proportion
+prop = df_rfm["Segment"].value_counts(normalize=True)
+prop = cast(pd.Series, prop)
+prop
+
+# %%
+# Quick check
+assert prop.loc["Champions"] == num_customers.loc["Champions"] / num_customers.sum()
+
+# %%
+# Percentage
+perc = 100.0 * prop
+perc = cast(pd.Series, perc)
+perc.name = "percentage"
+perc.transform(lambda p: f"{p:.2f}%")
+
+# %%
+# A few checks
+assert (perc >= 0.0).all()
+assert (perc <= 100.0).all()
+assert np.isclose(perc.sum(), 100.0)
+
+# %%
+del num_customers
+del prop
+del perc
+
+# %%
+# Combine the above results into a DataFrame
+cus_by_seg = (
+    df_rfm["Segment"]
+    .value_counts()
+    .to_frame()
+    .rename(columns={"count": "Count"})
+    .assign(
+        Percentage=(100.0 * df_rfm["Segment"].value_counts(normalize=True)).transform(lambda p: f"{p:.2f}%")
+    )
+    .reindex(list(unique_everseen(SEGMENTS_5.values())))
+)
+cus_by_seg = cast(pd.DataFrame, cus_by_seg)
+cus_by_seg
+
+# %% [markdown]
+# Note the following: customers in the "Champions" segment correspond to almost
+# 20% of all customers. In other words: **roughly speaking, the top 20% of
+# customers can be associated with the "Champions" segment**. The relevance of
+# this fact will become clear when we discuss the Pareto principle.

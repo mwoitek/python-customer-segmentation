@@ -9,6 +9,7 @@ matplotlib = "*"
 notebook = "*"
 pandas = "*"
 openpyxl = "*"
+more-itertools = "*"
 
 [dev-packages]
 
