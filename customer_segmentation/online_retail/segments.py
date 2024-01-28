@@ -745,3 +745,55 @@ cus_by_seg
 # 20% of all customers. In other words: **roughly speaking, the top 20% of
 # customers can be associated with the "Champions" segment**. The relevance of
 # this fact will become clear when we discuss the Pareto principle.
+#
+# ## Revenue by segment
+
+# %%
+# Total revenue by segment
+total_by_seg = df_rfm.groupby(by="Segment", observed=True).Monetary.sum()
+total_by_seg = cast(pd.Series, total_by_seg)
+total_by_seg.name = "revenue"
+total_by_seg.round(2)
+
+# %%
+# Quick check
+rev_new_1 = total_by_seg.loc["New Customers"]
+rev_new_2 = df_rfm.loc[df_rfm["Segment"] == "New Customers", "Monetary"].sum()
+assert rev_new_1 == rev_new_2
+del rev_new_1
+del rev_new_2
+
+# %%
+# Total revenue
+total_rev = df_rfm["Monetary"].sum()
+total_rev = cast(np.float_, total_rev)
+assert np.isclose(total_rev, total_by_seg.sum())
+np.round(total_rev, 2)
+
+# %%
+# Proportion
+rev_prop = df_rfm.groupby(by="Segment", observed=True).Monetary.agg(lambda col: col.sum() / total_rev)
+rev_prop = cast(pd.Series, rev_prop)
+rev_prop.name = "proportion"
+rev_prop
+
+# %%
+# Quick check
+prop_1 = rev_prop.loc["New Customers"]
+prop_2 = total_by_seg.loc["New Customers"] / df_rfm["Monetary"].sum()
+assert prop_1 == prop_2
+del prop_1
+del prop_2
+
+# %%
+# Percentage
+rev_perc = 100.0 * rev_prop
+rev_perc = cast(pd.Series, rev_perc)
+rev_perc.name = "percentage"
+rev_perc.transform(lambda p: f"{p:.2f}%")
+
+# %%
+# A few checks
+assert (rev_perc >= 0.0).all()
+assert (rev_perc <= 100.0).all()
+assert np.isclose(rev_perc.sum(), 100.0)
