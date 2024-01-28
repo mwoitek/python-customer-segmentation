@@ -11,8 +11,10 @@ pandas = "*"
 openpyxl = "*"
 more-itertools = "*"
 pyarrow = "*"
+seaborn = "*"
 
 [dev-packages]
+pygobject = "*"
 
 [requires]
 python_version = "3.11"

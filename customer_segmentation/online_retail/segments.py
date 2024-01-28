@@ -11,8 +11,10 @@
 from pathlib import Path
 from typing import cast
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.axes import Axes
 from more_itertools import unique_everseen
 from pandas.testing import assert_frame_equal, assert_series_equal
 
@@ -690,6 +692,7 @@ del df_func
 
 # %% [markdown]
 # ## Customers by segment
+# ### Calculations
 
 # %%
 # Number of customers
@@ -762,8 +765,51 @@ def customers_by_segment(df: pd.DataFrame, segments_dict: dict[str, str]) -> pd.
 
 
 # %%
-customers_by_segment(df_rfm, SEGMENTS_5)
+cus_by_seg = customers_by_segment(df_rfm, SEGMENTS_5)
+cus_by_seg
 
+# %% [markdown]
+# ### Visualization
+
+# %%
+# Number of customers
+fig, ax = plt.subplots(figsize=(8.0, 6.0), layout="tight")
+ax = cast(Axes, ax)
+ax.barh(cus_by_seg.index, cus_by_seg["CustomerCount"])
+ax.invert_yaxis()
+ax.set_title("Number of Customers by Segment")
+ax.set_xlabel("Number of Customers")
+plt.show()
+
+# %%
+# Percentage
+fig, ax = plt.subplots(figsize=(8.0, 6.0), layout="tight")
+ax = cast(Axes, ax)
+ax.barh(cus_by_seg.index, cus_by_seg["CustomerPercentage"])
+ax.invert_yaxis()
+ax.set_title("Percentage of Customers in Each Segment")
+ax.set_xlabel("Percentage (%)")
+plt.show()
+
+# %%
+# Combine these plots into a single figure
+fig, axs = plt.subplots(1, 2, sharey=True, figsize=(13.0, 6.5), layout="constrained")
+
+axs_list = axs.flatten().tolist()
+axs_list = cast(list[Axes], axs_list)
+
+axs_list[0].barh(cus_by_seg.index, cus_by_seg["CustomerCount"])
+axs_list[0].set_title("Number of Customers by Segment")
+axs_list[0].set_xlabel("Number of Customers")
+
+axs_list[1].barh(cus_by_seg.index, cus_by_seg["CustomerPercentage"])
+axs_list[1].set_title("Percentage of Customers in Each Segment")
+axs_list[1].set_xlabel("Percentage (%)")
+
+axs_list[1].invert_yaxis()
+fig.suptitle("Customers by Segment", fontsize="xx-large")
+
+plt.show()
 
 # %% [markdown]
 # ## Revenue by segment
