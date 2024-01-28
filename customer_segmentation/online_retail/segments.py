@@ -746,6 +746,26 @@ cus_by_seg
 # customers can be associated with the "Champions" segment**. The relevance of
 # this fact will become clear when we discuss the Pareto principle.
 #
+# Use the essential parts of this code to implement a function:
+
+
+# %%
+def customers_by_segment(df: pd.DataFrame, segments_dict: dict[str, str]) -> pd.DataFrame:
+    return (
+        df["Segment"]
+        .value_counts()
+        .to_frame()
+        .rename(columns={"count": "CustomerCount"})
+        .assign(CustomerPercentage=(100.0 * df["Segment"].value_counts(normalize=True)).round(2))
+        .reindex(list(unique_everseen(segments_dict.values())))
+    )
+
+
+# %%
+customers_by_segment(df_rfm, SEGMENTS_5)
+
+
+# %% [markdown]
 # ## Revenue by segment
 
 # %%
@@ -797,3 +817,65 @@ rev_perc.transform(lambda p: f"{p:.2f}%")
 assert (rev_perc >= 0.0).all()
 assert (rev_perc <= 100.0).all()
 assert np.isclose(rev_perc.sum(), 100.0)
+
+# %%
+# Combine the above results into a DataFrame
+seg_groups = df_rfm.groupby(by="Segment", observed=True)
+total_rev = np.round(df_rfm["Monetary"].sum(), 2)
+
+rev_by_seg = (
+    seg_groups.Monetary.sum()
+    .round(2)
+    .to_frame()
+    .rename(columns={"Monetary": "Revenue"})
+    .assign(
+        Percentage=(100.0 * seg_groups.Monetary.agg(lambda col: col.sum() / total_rev)).transform(
+            lambda p: f"{p:.2f}%"
+        )
+    )
+    .reindex(list(unique_everseen(SEGMENTS_5.values())))
+)
+rev_by_seg = cast(pd.DataFrame, rev_by_seg)
+rev_by_seg
+
+# %% [markdown]
+# Use the essential parts of this code to implement a function:
+
+
+# %%
+def revenue_by_segment(df: pd.DataFrame, segments_dict: dict[str, str]) -> pd.DataFrame:
+    seg_groups = df.groupby(by="Segment", observed=True)
+    total_rev = np.round(df["Monetary"].sum(), 2)
+    return (
+        seg_groups.Monetary.sum()
+        .round(2)
+        .to_frame()
+        .rename(columns={"Monetary": "Revenue"})
+        .assign(RevenuePercentage=(100.0 * seg_groups.Monetary.agg(lambda c: c.sum() / total_rev)).round(2))
+        .reindex(list(unique_everseen(segments_dict.values())))
+    )
+
+
+# %%
+revenue_by_segment(df_rfm, SEGMENTS_5)
+
+# %%
+# Combine segment data
+cus_by_seg = cus_by_seg.rename(columns={"Percentage": "CustomerPercentage"})
+rev_by_seg = rev_by_seg.rename(columns={"Percentage": "RevenuePercentage"})
+pd.concat([cus_by_seg, rev_by_seg], axis=1)
+
+
+# %%
+def get_segment_data(df: pd.DataFrame, segments_dict: dict[str, str]) -> pd.DataFrame:
+    return pd.concat(
+        [
+            customers_by_segment(df, segments_dict),
+            revenue_by_segment(df, segments_dict),
+        ],
+        axis=1,
+    )
+
+
+# %%
+get_segment_data(df_rfm, SEGMENTS_5)
