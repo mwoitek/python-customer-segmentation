@@ -10,6 +10,7 @@ notebook = "*"
 pandas = "*"
 openpyxl = "*"
 more-itertools = "*"
+pyarrow = "*"
 
 [dev-packages]
 

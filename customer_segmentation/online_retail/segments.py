@@ -53,7 +53,7 @@ df_rfm["RScore"].cat.ordered
 # %%
 # Fix categorical columns
 score_cols = ["RScore", "FScore", "MScore"]
-df_rfm.loc[:, score_cols] = df_rfm.loc[:, score_cols].transform(lambda col: col.cat.as_ordered())
+df_rfm[score_cols] = df_rfm[score_cols].transform(lambda col: col.cat.as_ordered())
 del score_cols
 
 # %%
@@ -666,7 +666,7 @@ def read_rfm_scores(file_path: Path) -> pd.DataFrame:
     )
 
     score_cols = ["RScore", "FScore", "MScore"]
-    df.loc[:, score_cols] = df.loc[:, score_cols].transform(lambda col: col.cat.as_ordered())
+    df[score_cols] = df[score_cols].transform(lambda col: col.cat.as_ordered())
 
     return df
 
