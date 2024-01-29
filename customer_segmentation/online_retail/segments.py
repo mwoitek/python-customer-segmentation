@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.axes import Axes
+from matplotlib.ticker import AutoMinorLocator
 from more_itertools import unique_everseen
 from pandas.testing import assert_frame_equal, assert_series_equal
 
@@ -813,6 +814,7 @@ plt.show()
 
 # %% [markdown]
 # ## Revenue by segment
+# ### Calculations
 
 # %%
 # Total revenue by segment
@@ -903,16 +905,59 @@ def revenue_by_segment(df: pd.DataFrame, segments_dict: dict[str, str]) -> pd.Da
 
 
 # %%
-revenue_by_segment(df_rfm, SEGMENTS_5)
+rev_by_seg = revenue_by_segment(df_rfm, SEGMENTS_5)
+rev_by_seg
+
+# %% [markdown]
+# ### Visualization
+
+# %%
+# Revenue
+fig, ax = plt.subplots(figsize=(8.0, 6.0), layout="tight")
+ax = cast(Axes, ax)
+ax.barh(rev_by_seg.index, rev_by_seg["Revenue"] / 1e6)
+ax.xaxis.set_minor_locator(AutoMinorLocator(5))
+ax.invert_yaxis()
+ax.set_title("Revenue by Segment")
+ax.set_xlabel("Revenue (Million £)")
+plt.show()
+
+# %%
+# Revenue percentage
+fig, ax = plt.subplots(figsize=(8.0, 6.0), layout="tight")
+ax = cast(Axes, ax)
+ax.barh(rev_by_seg.index, rev_by_seg["RevenuePercentage"])
+ax.xaxis.set_minor_locator(AutoMinorLocator(5))
+ax.invert_yaxis()
+ax.set_title("Percentage of Revenue from Each Segment")
+ax.set_xlabel("Percentage (%)")
+plt.show()
+
+# %%
+# Combine these plots into a single figure
+fig, axs = plt.subplots(1, 2, sharey=True, figsize=(13.0, 6.5), layout="constrained")
+
+axs_list = axs.flatten().tolist()
+axs_list = cast(list[Axes], axs_list)
+
+axs_list[0].barh(rev_by_seg.index, rev_by_seg["Revenue"] / 1e6)
+axs_list[0].xaxis.set_minor_locator(AutoMinorLocator(5))
+axs_list[0].set_title("Revenue by Segment")
+axs_list[0].set_xlabel("Revenue (Million £)")
+
+axs_list[1].barh(rev_by_seg.index, rev_by_seg["RevenuePercentage"])
+axs_list[1].xaxis.set_minor_locator(AutoMinorLocator(5))
+axs_list[1].set_title("Percentage of Revenue from Each Segment")
+axs_list[1].set_xlabel("Percentage (%)")
+
+axs_list[1].invert_yaxis()
+fig.suptitle("Revenue", fontsize="xx-large")
+
+plt.show()
+
 
 # %%
 # Combine segment data
-cus_by_seg = cus_by_seg.rename(columns={"Percentage": "CustomerPercentage"})
-rev_by_seg = rev_by_seg.rename(columns={"Percentage": "RevenuePercentage"})
-pd.concat([cus_by_seg, rev_by_seg], axis=1)
-
-
-# %%
 def get_segment_data(df: pd.DataFrame, segments_dict: dict[str, str]) -> pd.DataFrame:
     return pd.concat(
         [
