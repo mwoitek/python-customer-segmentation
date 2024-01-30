@@ -23,8 +23,10 @@ from pandas.testing import assert_frame_equal, assert_series_equal
 # ## Read RFM scores
 
 # %%
+DATA_DIR = Path.cwd().parents[1] / "data"
+
 # File path for dataset
-file_path = Path.cwd().parents[1] / "data" / "rfm_scores.csv"
+file_path = DATA_DIR / "rfm_scores.csv"
 assert file_path.exists(), f"file doesn't exist: {file_path}"
 assert file_path.is_file(), f"not a file: {file_path}"
 
@@ -692,6 +694,25 @@ assert_frame_equal(df_func, df_rfm)
 del df_func
 
 # %% [markdown]
+# What has been done up to this point can be repeated with the help of the
+# function below:
+
+
+# %%
+def add_labels_and_save(file_path: Path, segments_dict: dict[str, str]) -> None:
+    df = read_rfm_scores(file_path)
+    df = label_customers(df, segments_dict)
+    out_file = file_path.parent / "rfm_segments.csv"
+    df.to_csv(out_file, index=True)
+
+
+# %%
+# add_labels_and_save(
+#     Path.cwd().parents[1] / "data" / "rfm_scores.csv",
+#     SEGMENTS_5,
+# )
+
+# %% [markdown]
 # ## Customers by segment
 # ### Calculations
 
@@ -975,6 +996,11 @@ def get_segment_data(df: pd.DataFrame, segments_dict: dict[str, str]) -> pd.Data
 df_segment = get_segment_data(df_rfm, SEGMENTS_5)
 df_segment
 
+# %%
+# Save data in this DataFrame
+out_file = file_path.parent / "segment_data.csv"
+df_segment.to_csv(out_file, index=True)
+
 # %% [markdown]
 # Functions for creating the above plots:
 
@@ -1051,3 +1077,25 @@ def plot_revenue_by_segment(
 
 # %%
 plot_revenue_by_segment(df_segment, save=True)
+
+# %% [markdown]
+# What was done above and in the last two sections can be repeated by using the
+# following function:
+
+
+# %%
+def compute_and_plot_segment_data(
+    df: pd.DataFrame,
+    segments_dict: dict[str, str],
+    figsize: tuple[float, float] = (13.0, 6.5),
+) -> None:
+    df_segment = get_segment_data(df, segments_dict)
+    out_file = DATA_DIR / "segment_data.csv"
+    df_segment.to_csv(out_file, index=True)
+
+    plot_customers_by_segment(df_segment, save=True, figsize=figsize)
+    plot_revenue_by_segment(df_segment, save=True, figsize=figsize)
+
+
+# %%
+# compute_and_plot_segment_data(df_rfm, SEGMENTS_5)
