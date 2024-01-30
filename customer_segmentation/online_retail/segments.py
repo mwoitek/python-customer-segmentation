@@ -955,6 +955,9 @@ fig.suptitle("Revenue", fontsize="xx-large")
 
 plt.show()
 
+# %% [markdown]
+# ## A few functions
+
 
 # %%
 # Combine segment data
@@ -969,4 +972,82 @@ def get_segment_data(df: pd.DataFrame, segments_dict: dict[str, str]) -> pd.Data
 
 
 # %%
-get_segment_data(df_rfm, SEGMENTS_5)
+df_segment = get_segment_data(df_rfm, SEGMENTS_5)
+df_segment
+
+# %% [markdown]
+# Functions for creating the above plots:
+
+# %%
+# Path to images directory
+IMG_DIR = Path.cwd().parents[1] / "img"
+assert IMG_DIR.exists(), f"directory doesn't exist: {IMG_DIR}"
+assert IMG_DIR.is_dir(), f"not a directory: {IMG_DIR}"
+
+
+# %%
+def plot_customers_by_segment(
+    df_segment: pd.DataFrame,
+    *,
+    save: bool = False,
+    figsize: tuple[float, float] = (13.0, 6.5),
+) -> None:
+    fig, axs = plt.subplots(1, 2, sharey=True, figsize=figsize, layout="constrained")
+
+    axs_list = axs.flatten().tolist()
+    axs_list = cast(list[Axes], axs_list)
+
+    axs_list[0].barh(df_segment.index, df_segment["CustomerCount"])
+    axs_list[0].set_title("Number of Customers by Segment")
+    axs_list[0].set_xlabel("Number of Customers")
+
+    axs_list[1].barh(df_segment.index, df_segment["CustomerPercentage"])
+    axs_list[1].set_title("Percentage of Customers in Each Segment")
+    axs_list[1].set_xlabel("Percentage (%)")
+
+    axs_list[1].invert_yaxis()
+    fig.suptitle("Customers by Segment", fontsize="xx-large")
+
+    if save:
+        fig.savefig(IMG_DIR / "customers_by_segment.png")
+    else:
+        plt.show()
+
+
+# %%
+plot_customers_by_segment(df_segment, save=True)
+
+
+# %%
+def plot_revenue_by_segment(
+    df_segment: pd.DataFrame,
+    *,
+    save: bool = False,
+    figsize: tuple[float, float] = (13.0, 6.5),
+) -> None:
+    fig, axs = plt.subplots(1, 2, sharey=True, figsize=figsize, layout="constrained")
+
+    axs_list = axs.flatten().tolist()
+    axs_list = cast(list[Axes], axs_list)
+
+    axs_list[0].barh(df_segment.index, df_segment["Revenue"] / 1e6)
+    axs_list[0].xaxis.set_minor_locator(AutoMinorLocator(5))
+    axs_list[0].set_title("Revenue by Segment")
+    axs_list[0].set_xlabel("Revenue (Million £)")
+
+    axs_list[1].barh(df_segment.index, df_segment["RevenuePercentage"])
+    axs_list[1].xaxis.set_minor_locator(AutoMinorLocator(5))
+    axs_list[1].set_title("Percentage of Revenue from Each Segment")
+    axs_list[1].set_xlabel("Percentage (%)")
+
+    axs_list[1].invert_yaxis()
+    fig.suptitle("Revenue", fontsize="xx-large")
+
+    if save:
+        fig.savefig(IMG_DIR / "revenue_by_segment.png")
+    else:
+        plt.show()
+
+
+# %%
+plot_revenue_by_segment(df_segment, save=True)
