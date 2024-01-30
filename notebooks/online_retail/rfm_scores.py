@@ -7,7 +7,7 @@
 
 # %%
 from pathlib import Path
-from typing import cast
+from typing import Literal, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,7 +17,7 @@ from matplotlib.axes import Axes
 from matplotlib.ticker import AutoMinorLocator
 from pandas.testing import assert_frame_equal, assert_index_equal, assert_series_equal
 
-from utils.rfm import add_rfm_scores
+from utils.rfm import RFMAttribute, add_rfm_scores
 
 # %% [markdown]
 # ## Read prepared dataset
@@ -286,6 +286,94 @@ plt.show()
 # %%
 # Quick check
 df_rfm.loc[df_rfm["RScore"] == 1, "Recency"].describe()
+
+# %% [markdown]
+# ### Frequency and F score
+#
+# Next, we're going to do something very similar to what we've done above. Then
+# it's convenient to use this code to define a couple of functions:
+
+# %%
+# Path to images directory
+IMG_DIR = Path.cwd().parents[1] / "img"
+assert IMG_DIR.exists(), f"directory doesn't exist: {IMG_DIR}"
+assert IMG_DIR.is_dir(), f"not a directory: {IMG_DIR}"
+
+
+# %%
+def plot_bin_count(
+    df: pd.DataFrame,
+    score: Literal["R", "F", "M"],
+    *,
+    save: bool = False,
+    figsize: tuple[float, float] = (8.0, 6.0),
+) -> None:
+    fig, ax = plt.subplots(figsize=figsize, layout="tight")
+    ax = cast(Axes, ax)
+
+    sns.countplot(data=df, x=f"{score}Score", ax=ax)
+    ax.set_title(f"{score} Score: # Customers in each bin")
+    ax.set_xlabel(f"{score} Score")
+    ax.set_ylabel("Count")
+
+    if save:
+        out_img = IMG_DIR / f"bin_count_{score.lower()}score.png"
+        fig.savefig(out_img)
+        plt.close(fig)
+    else:
+        plt.show()
+
+
+# %%
+def plot_distribution_by_score(
+    df: pd.DataFrame,
+    attr: RFMAttribute,
+    *,
+    save: bool = False,
+    figsize: tuple[float, float] = (8.0, 6.0),
+) -> None:
+    fig, ax = plt.subplots(figsize=figsize, layout="tight")
+    ax = cast(Axes, ax)
+
+    first_letter = attr[0]
+    sns.boxplot(
+        data=df,
+        x=f"{first_letter}Score",
+        y=attr,
+        ax=ax,
+        # I just want to know if the RFM attributes are distributed in a way
+        # that makes sense. For this reason, I'll hide the outliers.
+        showfliers=False,
+    )
+    ax.set_title(f"{attr}: Distribution for each {first_letter} score")
+    ax.set_xlabel(f"{first_letter} Score")
+    ax.set_ylim(bottom=0)
+
+    match attr:
+        case "Recency":
+            unit = "days"
+        case "Frequency":
+            unit = "purchases"
+        case "Monetary":
+            unit = "£"
+    ax.set_ylabel(f"{attr} ({unit})")
+
+    if save:
+        out_img = IMG_DIR / f"{attr.lower()}_distribution.png"
+        fig.savefig(out_img)
+        plt.close(fig)
+    else:
+        plt.show()
+
+
+# %% [markdown]
+# Using these functions to generate the desired plots:
+
+# %%
+plot_bin_count(df_rfm, "F")
+
+# %%
+plot_distribution_by_score(df_rfm, "Frequency")
 
 # %% [markdown]
 # ## Summarizing through a function
