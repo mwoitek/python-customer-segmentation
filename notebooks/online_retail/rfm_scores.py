@@ -9,8 +9,12 @@
 from pathlib import Path
 from typing import cast
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
+from matplotlib.axes import Axes
+from matplotlib.ticker import AutoMinorLocator
 from pandas.testing import assert_frame_equal, assert_index_equal, assert_series_equal
 
 from utils.rfm import add_rfm_scores
@@ -244,6 +248,44 @@ df_rfm.info()
 out_file = file_path.parent / "rfm_scores.csv"
 
 df_rfm.to_csv(out_file, index=True)
+
+# %% [markdown]
+# ## Visualization
+# ### Recency and R score
+#
+# Check that every bin contains approximately the same number of customers:
+
+# %%
+fig, ax = plt.subplots(figsize=(8.0, 6.0), layout="tight")
+ax = cast(Axes, ax)
+sns.countplot(data=df_rfm, x="RScore", ax=ax)
+ax.set_title("R Score: # Customers in each bin")
+ax.set_xlabel("R Score")
+ax.set_ylabel("Count")
+ax.yaxis.set_minor_locator(AutoMinorLocator(4))
+plt.show()
+
+# %%
+# These are the values shown above:
+df_rfm["RScore"].value_counts(sort=False)
+
+# %% [markdown]
+# Distribution of `Recency` for each R score:
+
+# %%
+fig, ax = plt.subplots(figsize=(8.0, 6.0), layout="tight")
+ax = cast(Axes, ax)
+sns.boxplot(data=df_rfm, x="RScore", y="Recency", ax=ax)
+ax.set_title("Recency: Distribution for each R score")
+ax.set_xlabel("R Score")
+ax.set_ylabel("Recency (days)")
+ax.set_ylim(bottom=0)
+ax.yaxis.set_minor_locator(AutoMinorLocator(5))
+plt.show()
+
+# %%
+# Quick check
+df_rfm.loc[df_rfm["RScore"] == 1, "Recency"].describe()
 
 # %% [markdown]
 # ## Summarizing through a function
