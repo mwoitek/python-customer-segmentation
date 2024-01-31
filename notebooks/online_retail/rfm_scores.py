@@ -376,6 +376,73 @@ plot_bin_count(df_rfm, "F")
 plot_distribution_by_score(df_rfm, "Frequency")
 
 # %% [markdown]
+# In the case of the F score, the number of customers in each bin varies
+# considerably. Basically, this imbalance is a consequence of the following
+# fact: **more than a third of customers only made a single purchase**. This
+# fact can be verified as follows:
+
+# %%
+df_rfm.Frequency.transform(lambda f: "1 purchase" if f == 1 else "2 or more purchases").value_counts(
+    normalize=True, sort=False
+).mul(100.0).transform(lambda p: f"{p:.2f}%")
+
+# %% [markdown]
+# In fact, all customers who purchased only once were assigned an F score of 1:
+
+# %%
+df_rfm.loc[df_rfm.FScore == 1, "Frequency"].unique()
+
+# %% [markdown]
+# Something similar happened for F scores 2 and 3:
+
+# %%
+df_rfm.loc[df_rfm.FScore == 2, "Frequency"].unique()
+
+# %%
+df_rfm.loc[df_rfm.FScore == 3, "Frequency"].unique()
+
+# %% [markdown]
+# This is the reason why we see no variation in the first 3 boxplots above.
+#
+# The `FScore = 4` case is the first that corresponds to more than one
+# `Frequency` value:
+
+# %%
+df_rfm.loc[df_rfm.FScore == 4, "Frequency"].value_counts()
+
+# %% [markdown]
+# When `FScore = 5`, there's a lot more variation:
+
+# %%
+np.sort(df_rfm.loc[df_rfm.FScore == 5, "Frequency"].unique())
+
+# %% [markdown]
+# So it makes sense to recreate the above boxplot just for this case. This
+# time, we won't hide the outliers. The desired plot can be created as follows:
+
+# %%
+fig, ax = plt.subplots(figsize=(6.0, 6.0), layout="tight")
+ax = cast(Axes, ax)
+ax.boxplot(df_rfm.loc[df_rfm.FScore == 5, "Frequency"])
+ax.set_title("Frequency: Distribution for F Score = 5")
+ax.set_xticks([])
+ax.set_ylabel("Frequency (purchases)")
+ax.set_ylim(bottom=0)
+plt.show()
+
+# %% [markdown]
+# A lot of what was presented above makes even more sense when we look at the
+# density estimate for `Frequency`:
+
+# %%
+fig, ax = plt.subplots(figsize=(8.0, 6.0), layout="tight")
+ax = cast(Axes, ax)
+sns.kdeplot(data=df_rfm, x="Frequency", ax=ax)
+ax.set_title("KDE for Frequency")
+ax.set_xlabel("Frequency (purchases)")
+plt.show()
+
+# %% [markdown]
 # ## Summarizing through a function
 #
 # The RFM analysis isn't complete yet. But I've already achieved my goal for
