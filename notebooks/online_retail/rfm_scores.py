@@ -7,7 +7,7 @@
 
 # %%
 from pathlib import Path
-from typing import Literal, cast
+from typing import Literal, cast, get_args
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -443,11 +443,22 @@ ax.set_xlabel("Frequency (purchases)")
 plt.show()
 
 # %% [markdown]
-# ## Summarizing through a function
+# ### Monetary value and M score
+#
+# In this case, each bin has approximately the same number of customers:
+
+# %%
+plot_bin_count(df_rfm, "M")
+
+# %%
+plot_distribution_by_score(df_rfm, "Monetary")
+
+# %% [markdown]
+# ## Summarizing through functions
 #
 # The RFM analysis isn't complete yet. But I've already achieved my goal for
-# this notebook. As usual, I'll conclude by writing a function that summarizes
-# what I just did.
+# this notebook. As usual, I'll conclude by writing a couple of functions that
+# summarize what I just did.
 
 
 # %%
@@ -461,3 +472,19 @@ def compute_and_save_rfm_scores(file_path: Path, num_bins: int = 5) -> None:
 
 # %%
 # compute_and_save_rfm_scores(Path.cwd().parents[1] / "data" / "online_retail.csv", num_bins=5)
+
+
+# %%
+def plot_rfm_attributes_and_scores(
+    df: pd.DataFrame,
+    figsize: tuple[float, float] = (8.0, 6.0),
+) -> None:
+    attrs = get_args(RFMAttribute)
+    for score in (attr[0] for attr in attrs):
+        plot_bin_count(df, score, save=True, figsize=figsize)
+    for attr in attrs:
+        plot_distribution_by_score(df, attr, save=True, figsize=figsize)
+
+
+# %%
+plot_rfm_attributes_and_scores(df_rfm)
