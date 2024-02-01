@@ -1036,6 +1036,7 @@ def plot_customers_by_segment(
 
     if save:
         fig.savefig(IMG_DIR / "customers_by_segment.png")
+        plt.close(fig)
     else:
         plt.show()
 
@@ -1071,6 +1072,7 @@ def plot_revenue_by_segment(
 
     if save:
         fig.savefig(IMG_DIR / "revenue_by_segment.png")
+        plt.close(fig)
     else:
         plt.show()
 

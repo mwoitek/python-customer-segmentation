@@ -4,7 +4,7 @@ from typing import cast
 import numpy as np
 import pandas as pd
 
-from utils.rfm import add_rfm_scores
+from utils.rfm import add_rfm_scores, label_customers
 
 
 def get_clean_data(file_path: Path) -> pd.DataFrame:
@@ -84,3 +84,33 @@ def compute_and_save_rfm_scores(file_path: Path, num_bins: int = 5) -> None:
     df_rfm = add_rfm_scores(df_rfm, num_bins)
     out_file = file_path.parent / f"rfm_scores_{num_bins}.csv"
     df_rfm.to_csv(out_file, index=True)
+
+
+def read_rfm_scores(file_path: Path) -> pd.DataFrame:
+    df = pd.read_csv(
+        file_path,
+        dtype={
+            "CustomerID": "category",
+            "Recency": np.int_,
+            "Frequency": np.int_,
+            "Monetary": np.float_,
+            "RScore": "category",
+            "FScore": "category",
+            "MScore": "category",
+            "RFMCell": object,
+            "RFMScore": np.float_,
+        },
+        index_col="CustomerID",
+    )
+
+    score_cols = ["RScore", "FScore", "MScore"]
+    df[score_cols] = df[score_cols].transform(lambda col: col.cat.as_ordered())
+
+    return df
+
+
+def add_labels_and_save(file_path: Path, segments_dict: dict[str, str]) -> None:
+    df = read_rfm_scores(file_path)
+    df = label_customers(df, segments_dict)
+    out_file = file_path.parent / "rfm_segments.csv"
+    df.to_csv(out_file, index=True)
