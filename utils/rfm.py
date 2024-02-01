@@ -4,6 +4,7 @@ from typing import Literal, cast, get_args
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 from matplotlib.axes import Axes
 from matplotlib.ticker import AutoMinorLocator
 from more_itertools import unique_everseen
@@ -163,6 +164,81 @@ def add_rfm_scores(df: pd.DataFrame, num_bins: int = 5) -> pd.DataFrame:
     df["RFMScore"] = df[score_cols].astype(np.int_).agg("mean", axis="columns")
 
     return df
+
+
+def plot_bin_count(
+    df: pd.DataFrame,
+    score: Literal["R", "F", "M"],
+    *,
+    save: bool = False,
+    figsize: tuple[float, float] = (8.0, 6.0),
+) -> None:
+    fig, ax = plt.subplots(figsize=figsize, layout="tight")
+    ax = cast(Axes, ax)
+
+    sns.countplot(data=df, x=f"{score}Score", ax=ax)
+    ax.set_title(f"{score} Score: # Customers in each bin")
+    ax.set_xlabel(f"{score} Score")
+    ax.set_ylabel("Count")
+
+    if save:
+        out_img = IMG_DIR / f"bin_count_{score.lower()}score.png"
+        fig.savefig(out_img)
+        plt.close(fig)
+    else:
+        plt.show()
+
+
+def plot_distribution_by_score(
+    df: pd.DataFrame,
+    attr: RFMAttribute,
+    *,
+    save: bool = False,
+    figsize: tuple[float, float] = (8.0, 6.0),
+) -> None:
+    fig, ax = plt.subplots(figsize=figsize, layout="tight")
+    ax = cast(Axes, ax)
+
+    first_letter = attr[0]
+    sns.boxplot(
+        data=df,
+        x=f"{first_letter}Score",
+        y=attr,
+        ax=ax,
+        # I just want to know if the RFM attributes are distributed in a way
+        # that makes sense. For this reason, I'll hide the outliers.
+        showfliers=False,
+    )
+    ax.set_title(f"{attr}: Distribution for each {first_letter} score")
+    ax.set_xlabel(f"{first_letter} Score")
+    ax.set_ylim(bottom=0)
+
+    match attr:
+        case "Recency":
+            unit = "days"
+        case "Frequency":
+            unit = "purchases"
+        case "Monetary":
+            unit = "£"
+    ax.set_ylabel(f"{attr} ({unit})")
+
+    if save:
+        out_img = IMG_DIR / f"{attr.lower()}_distribution.png"
+        fig.savefig(out_img)
+        plt.close(fig)
+    else:
+        plt.show()
+
+
+def plot_rfm_attributes_and_scores(
+    df: pd.DataFrame,
+    figsize: tuple[float, float] = (8.0, 6.0),
+) -> None:
+    attrs = get_args(RFMAttribute)
+    for score in (attr[0] for attr in attrs):
+        plot_bin_count(df, score, save=True, figsize=figsize)
+    for attr in attrs:
+        plot_distribution_by_score(df, attr, save=True, figsize=figsize)
 
 
 def label_customers(df: pd.DataFrame, segments_dict: dict[str, str]) -> pd.DataFrame:
