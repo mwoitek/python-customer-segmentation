@@ -8,6 +8,12 @@
 
 # %%
 from pathlib import Path
+from typing import cast
+
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import seaborn as sns
+from matplotlib.axes import Axes
 
 from utils.online_retail import compute_rfm_attributes, compute_total_price, get_clean_data
 
@@ -46,3 +52,33 @@ df.info()
 # **NOTE**: I'm not sure where this is going. To have a clearer idea, I need to
 # play around with the data. So for now this is the only thing I'm going to do.
 # Later I'll come back here and build a narrative.
+
+# %% [markdown]
+# ## Correlations
+
+# %%
+fig, ax = plt.subplots(figsize=(6.0, 6.0), layout="tight")
+ax = cast(Axes, ax)
+sns.heatmap(
+    df[["Recency", "Frequency", "Monetary"]].corr(),
+    annot=True,
+    cmap=mpl.colormaps["coolwarm"],
+    ax=ax,
+)
+plt.show()
+
+# %%
+# New feature
+df["AvgSpent"] = df["Monetary"] / df["Frequency"]
+df["AvgSpent"].isna().sum()
+
+# %%
+fig, ax = plt.subplots(figsize=(6.0, 6.0), layout="tight")
+ax = cast(Axes, ax)
+sns.heatmap(
+    df[["Recency", "Frequency", "AvgSpent"]].corr(),
+    annot=True,
+    cmap=mpl.colormaps["coolwarm"],
+    ax=ax,
+)
+plt.show()
