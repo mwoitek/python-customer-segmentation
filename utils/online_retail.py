@@ -9,7 +9,12 @@ from utils.rfm import add_rfm_scores, label_customers
 
 def get_clean_data(file_path: Path) -> pd.DataFrame:
     cols = ["InvoiceNo", "InvoiceDate", "CustomerID", "Quantity", "UnitPrice"]
-    df = pd.read_excel(file_path, usecols=cols, dtype={col: object for col in cols}).loc[:, cols]
+    df = pd.read_excel(
+        file_path,
+        usecols=cols,
+        dtype={col: object for col in filter(lambda c: c != "InvoiceDate", cols)},
+        parse_dates=["InvoiceDate"],
+    ).loc[:, cols]
     df = cast(pd.DataFrame, df)
 
     df = df.dropna()
@@ -44,7 +49,11 @@ def compute_total_price(df_group: pd.DataFrame) -> pd.Series:
 
 def prepare_and_save_data(file_path: Path) -> None:
     clean_data = get_clean_data(file_path)
-    aggregated_data = clean_data.groupby("InvoiceNo", observed=True).apply(compute_total_price).reset_index()
+    aggregated_data = (
+        clean_data.groupby("InvoiceNo", observed=True)
+        .apply(compute_total_price, include_groups=False)
+        .reset_index()
+    )
     out_file = file_path.with_suffix(".csv")
     aggregated_data.to_csv(out_file, index=False)
 
