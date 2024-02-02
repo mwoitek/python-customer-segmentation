@@ -14,6 +14,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.axes import Axes
+from sklearn.preprocessing import PowerTransformer
 
 from utils.online_retail import compute_rfm_attributes, compute_total_price, get_clean_data
 
@@ -81,4 +82,77 @@ sns.heatmap(
     cmap=mpl.colormaps["coolwarm"],
     ax=ax,
 )
+plt.show()
+
+# %% [markdown]
+# ## Distributions
+
+# %%
+# Recency
+fig, ax = plt.subplots(figsize=(8.0, 6.0), layout="tight")
+ax = cast(Axes, ax)
+sns.kdeplot(data=df, x="Recency", ax=ax)
+plt.show()
+
+# %%
+# Frequency
+fig, ax = plt.subplots(figsize=(8.0, 6.0), layout="tight")
+ax = cast(Axes, ax)
+sns.kdeplot(data=df, x="Frequency", ax=ax)
+plt.show()
+
+# %%
+# AvgSpent
+fig, ax = plt.subplots(figsize=(8.0, 6.0), layout="tight")
+ax = cast(Axes, ax)
+sns.kdeplot(data=df, x="AvgSpent", ax=ax)
+plt.show()
+
+# %% [markdown]
+# ## Power transforms
+
+# %%
+assert (df["Recency"] > 0).all()
+assert (df["Frequency"] > 0).all()
+assert (df["AvgSpent"] > 0).all()
+
+# %%
+X = df[["Recency", "Frequency", "AvgSpent"]].to_numpy()
+X
+
+# %%
+pt = PowerTransformer(method="box-cox")
+X_new = pt.fit_transform(X)
+X_new
+
+# %%
+df = df.assign(
+    PTRecency=X_new[:, 0],
+    PTFrequency=X_new[:, 1],
+    PTAvgSpent=X_new[:, 2],
+)
+df.head()
+
+# %%
+df[["PTRecency", "PTFrequency", "PTAvgSpent"]].agg(["mean", "var"])
+
+# %%
+# NOT Gaussian-like
+fig, ax = plt.subplots(figsize=(8.0, 6.0), layout="tight")
+ax = cast(Axes, ax)
+sns.kdeplot(data=df, x="PTRecency", ax=ax)
+plt.show()
+
+# %%
+# NOT Gaussian-like
+fig, ax = plt.subplots(figsize=(8.0, 6.0), layout="tight")
+ax = cast(Axes, ax)
+sns.kdeplot(data=df, x="PTFrequency", ax=ax)
+plt.show()
+
+# %%
+# Gaussian-like
+fig, ax = plt.subplots(figsize=(8.0, 6.0), layout="tight")
+ax = cast(Axes, ax)
+sns.kdeplot(data=df, x="PTAvgSpent", ax=ax)
 plt.show()

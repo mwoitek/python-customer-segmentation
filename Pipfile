@@ -12,6 +12,7 @@ openpyxl = "*"
 more-itertools = "*"
 pyarrow = "*"
 seaborn = "*"
+scikit-learn = "*"
 
 [dev-packages]
 pygobject = "*"
