@@ -1,8 +1,8 @@
 # %% [markdown]
-# # Online Retail Dataset: Clustering
+# # Online Retail Dataset: Feature Engineering for Clustering
 #
-# In this notebook, I'll use a clustering algorithm to perform customer
-# segmentation.
+# In this notebook, I'll create some features that will be used to perform
+# customer segmentation with clustering algorithms.
 #
 # ## Imports
 
@@ -14,7 +14,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.axes import Axes
-from sklearn.preprocessing import PowerTransformer
+from sklearn.preprocessing import PowerTransformer, QuantileTransformer, StandardScaler
 
 from utils.online_retail import compute_rfm_attributes, compute_total_price, get_clean_data
 
@@ -23,8 +23,8 @@ from utils.online_retail import compute_rfm_attributes, compute_total_price, get
 #
 # In other notebooks, we've cleaned the original data, and computed the RFM
 # attributes. We're done with the RFM analysis, but we'll use those results
-# here. More precisely, to implement the clustering algorithm, we'll utilize
-# recency, frequency and monetary value as features.
+# here. Specifically, we'll utilize recency, frequency and monetary value to
+# create new features.
 #
 # Fortunately, we've defined a few functions that we can call to repeat the
 # steps mentioned above. We can prepare the data again with the aid of the code
@@ -37,6 +37,7 @@ assert file_path.exists(), f"file doesn't exist: {file_path}"
 assert file_path.is_file(), f"not a file: {file_path}"
 
 # %%
+# Get RFM attributes
 df = (
     get_clean_data(file_path)
     .groupby("InvoiceNo", observed=True)
@@ -58,6 +59,7 @@ df.info()
 # ## Correlations
 
 # %%
+# Correlation between RFM attributes
 fig, ax = plt.subplots(figsize=(6.0, 6.0), layout="tight")
 ax = cast(Axes, ax)
 sns.heatmap(
@@ -69,11 +71,12 @@ sns.heatmap(
 plt.show()
 
 # %%
-# New feature
+# Introduce feature to replace `Monetary`
 df["AvgSpent"] = df["Monetary"] / df["Frequency"]
-df["AvgSpent"].isna().sum()
+assert df["AvgSpent"].isna().sum() == 0
 
 # %%
+# Correlations with `Monetary` replaced
 fig, ax = plt.subplots(figsize=(6.0, 6.0), layout="tight")
 ax = cast(Axes, ax)
 sns.heatmap(
@@ -109,50 +112,101 @@ sns.kdeplot(data=df, x="AvgSpent", ax=ax)
 plt.show()
 
 # %% [markdown]
-# ## Power transforms
+# ## Create features by using transforms
+# ### Power transforms
 
 # %%
+# Box-Cox transform requires strictly positive input
 assert (df["Recency"] > 0).all()
 assert (df["Frequency"] > 0).all()
 assert (df["AvgSpent"] > 0).all()
 
 # %%
+# Actual transformation
 X = df[["Recency", "Frequency", "AvgSpent"]].to_numpy()
-X
-
-# %%
-pt = PowerTransformer(method="box-cox")
-X_new = pt.fit_transform(X)
-X_new
-
-# %%
+X_new = PowerTransformer(method="box-cox").fit_transform(X)
 df = df.assign(
     PTRecency=X_new[:, 0],
     PTFrequency=X_new[:, 1],
     PTAvgSpent=X_new[:, 2],
 )
+del X_new
 df.head()
 
 # %%
+# New features have mean 0 and variance 1
 df[["PTRecency", "PTFrequency", "PTAvgSpent"]].agg(["mean", "var"])
 
 # %%
-# NOT Gaussian-like
+# Distribution of PTRecency: NOT Gaussian-like
 fig, ax = plt.subplots(figsize=(8.0, 6.0), layout="tight")
 ax = cast(Axes, ax)
 sns.kdeplot(data=df, x="PTRecency", ax=ax)
 plt.show()
 
 # %%
-# NOT Gaussian-like
+# Distribution of PTFrequency: NOT Gaussian-like
 fig, ax = plt.subplots(figsize=(8.0, 6.0), layout="tight")
 ax = cast(Axes, ax)
 sns.kdeplot(data=df, x="PTFrequency", ax=ax)
 plt.show()
 
 # %%
-# Gaussian-like
+# Distribution of PTAvgSpent: Gaussian-like!!!
 fig, ax = plt.subplots(figsize=(8.0, 6.0), layout="tight")
 ax = cast(Axes, ax)
 sns.kdeplot(data=df, x="PTAvgSpent", ax=ax)
+plt.show()
+
+# %% [markdown]
+# ### Quantile transform
+
+# %%
+qt = QuantileTransformer(n_quantiles=100, output_distribution="normal", random_state=333)
+X_new = qt.fit_transform(X)
+df = df.assign(
+    QTRecency=X_new[:, 0],
+    QTFrequency=X_new[:, 1],
+    QTAvgSpent=X_new[:, 2],
+)
+del qt
+del X_new
+df.head()
+
+# %%
+# New features need to be standardized
+df[["QTRecency", "QTFrequency", "QTAvgSpent"]].agg(["mean", "var"])
+
+# %%
+# Standardize new features
+X = df[["QTRecency", "QTFrequency", "QTAvgSpent"]].to_numpy()
+X_new = StandardScaler().fit_transform(X)
+df = df.assign(
+    QTRecency=X_new[:, 0],
+    QTFrequency=X_new[:, 1],
+    QTAvgSpent=X_new[:, 2],
+)
+del X
+del X_new
+df.head()
+
+# %%
+# Distribution of QTRecency: Gaussian-like!!!
+fig, ax = plt.subplots(figsize=(8.0, 6.0), layout="tight")
+ax = cast(Axes, ax)
+sns.kdeplot(data=df, x="QTRecency", ax=ax)
+plt.show()
+
+# %%
+# Distribution of QTFrequency: NOT Gaussian-like
+fig, ax = plt.subplots(figsize=(8.0, 6.0), layout="tight")
+ax = cast(Axes, ax)
+sns.kdeplot(data=df, x="QTFrequency", ax=ax)
+plt.show()
+
+# %%
+# Distribution of QTAvgSpent: Gaussian-like!!!
+fig, ax = plt.subplots(figsize=(8.0, 6.0), layout="tight")
+ax = cast(Axes, ax)
+sns.kdeplot(data=df, x="QTAvgSpent", ax=ax)
 plt.show()
