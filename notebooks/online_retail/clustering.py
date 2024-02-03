@@ -12,9 +12,11 @@ from typing import cast
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import pandas as pd
 import seaborn as sns
 from matplotlib.axes import Axes
 from mpl_toolkits.mplot3d.axes3d import Axes3D
+from pandas.testing import assert_frame_equal
 from sklearn.preprocessing import PowerTransformer, QuantileTransformer, StandardScaler
 
 from utils.online_retail import compute_rfm_attributes, compute_total_price, get_clean_data
@@ -50,11 +52,6 @@ df.head()
 
 # %%
 df.info()
-
-# %% [markdown]
-# **NOTE**: I'm not sure where this is going. To have a clearer idea, I need to
-# play around with the data. So for now this is the only thing I'm going to do.
-# Later I'll come back here and build a narrative.
 
 # %% [markdown]
 # ## Correlations
@@ -139,6 +136,18 @@ df.head()
 df[["PTRecency", "PTFrequency", "PTAvgSpent"]].agg(["mean", "var"])
 
 # %%
+# Correlations
+fig, ax = plt.subplots(figsize=(6.0, 6.0), layout="tight")
+ax = cast(Axes, ax)
+sns.heatmap(
+    df[["PTRecency", "PTFrequency", "PTAvgSpent"]].corr(),
+    annot=True,
+    cmap=mpl.colormaps["coolwarm"],
+    ax=ax,
+)
+plt.show()
+
+# %%
 # Distribution of PTRecency: NOT Gaussian-like
 fig, ax = plt.subplots(figsize=(8.0, 6.0), layout="tight")
 ax = cast(Axes, ax)
@@ -190,6 +199,18 @@ df = df.assign(
 del X
 del X_new
 df.head()
+
+# %%
+# Correlations
+fig, ax = plt.subplots(figsize=(6.0, 6.0), layout="tight")
+ax = cast(Axes, ax)
+sns.heatmap(
+    df[["QTRecency", "QTFrequency", "QTAvgSpent"]].corr(),
+    annot=True,
+    cmap=mpl.colormaps["coolwarm"],
+    ax=ax,
+)
+plt.show()
 
 # %%
 # Distribution of QTRecency: Gaussian-like!!!
@@ -254,3 +275,76 @@ plt.show()
 # Based on the above figures, the power transform features seem the most
 # useful. After all, in the corresponding plot, we can see a few clusters quite
 # clearly.
+
+# %% [markdown]
+# ## Save features
+
+# %%
+# Just checking everything's OK
+df.head()
+
+# %%
+df.info()
+
+# %%
+# Save to CSV
+out_file = file_path.parent / "clustering_features.csv"
+df.to_csv(out_file, index=True)
+
+# %% [markdown]
+# ## Summarizing through functions
+
+
+# %%
+def get_original_features(file_path: Path) -> pd.DataFrame:
+    return (
+        get_clean_data(file_path)
+        .groupby("InvoiceNo", observed=True)
+        .apply(compute_total_price, include_groups=False)
+        .reset_index()
+        .pipe(compute_rfm_attributes)
+        .assign(AvgSpent=df["Monetary"] / df["Frequency"])
+        .drop(columns="Monetary")
+    )
+
+
+# %%
+def add_power_transform_features(df: pd.DataFrame) -> pd.DataFrame:
+    X = df[["Recency", "Frequency", "AvgSpent"]].to_numpy()  # noqa: N806
+    X_new = PowerTransformer(method="box-cox").fit_transform(X)  # noqa: N806
+    return df.assign(PTRecency=X_new[:, 0], PTFrequency=X_new[:, 1], PTAvgSpent=X_new[:, 2])
+
+
+# %%
+def add_quantile_transform_features(df: pd.DataFrame) -> pd.DataFrame:
+    X = df[["Recency", "Frequency", "AvgSpent"]].to_numpy()  # noqa: N806
+    qt = QuantileTransformer(n_quantiles=100, output_distribution="normal", random_state=333)
+    X_new_1 = qt.fit_transform(X)  # noqa: N806
+    X_new_2 = StandardScaler().fit_transform(X_new_1)  # noqa: N806
+    return df.assign(QTRecency=X_new_2[:, 0], QTFrequency=X_new_2[:, 1], QTAvgSpent=X_new_2[:, 2])
+
+
+# %%
+# Quick check
+df_funcs = (
+    get_original_features(Path.cwd().parents[1] / "data" / "online_retail.xlsx")
+    .pipe(add_power_transform_features)
+    .pipe(add_quantile_transform_features)
+)
+assert_frame_equal(df_funcs, df.drop(columns="Monetary"))
+del df_funcs
+
+
+# %%
+def compute_and_save_features(file_path: Path) -> None:
+    df = (
+        get_original_features(file_path)
+        .pipe(add_power_transform_features)
+        .pipe(add_quantile_transform_features)
+    )
+    out_file = file_path.parent / "clustering_features.csv"
+    df.to_csv(out_file, index=True)
+
+
+# %%
+compute_and_save_features(Path.cwd().parents[1] / "data" / "online_retail.xlsx")
