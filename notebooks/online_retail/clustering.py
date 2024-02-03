@@ -14,6 +14,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.axes import Axes
+from mpl_toolkits.mplot3d.axes3d import Axes3D
 from sklearn.preprocessing import PowerTransformer, QuantileTransformer, StandardScaler
 
 from utils.online_retail import compute_rfm_attributes, compute_total_price, get_clean_data
@@ -210,3 +211,46 @@ fig, ax = plt.subplots(figsize=(8.0, 6.0), layout="tight")
 ax = cast(Axes, ax)
 sns.kdeplot(data=df, x="QTAvgSpent", ax=ax)
 plt.show()
+
+# %% [markdown]
+# ## 3D Plots
+
+# %%
+# For comparison, plot "original" features
+fig = plt.figure(figsize=(8.0, 6.5), layout="tight")
+ax = fig.add_subplot(projection="3d")
+ax = cast(Axes3D, ax)
+ax.scatter(df.Recency, df.Frequency, df.AvgSpent)
+ax.set_xlabel("Recency")
+ax.set_ylabel("Frequency")
+ax.set_zlabel("AvgSpent")
+plt.show()
+
+# %%
+# Features yielded by power transform
+fig = plt.figure(figsize=(8.0, 6.5), layout="tight")
+ax = fig.add_subplot(projection="3d")
+ax = cast(Axes3D, ax)
+ax.scatter(df.PTRecency, df.PTFrequency, df.PTAvgSpent)
+ax.view_init(elev=55.0, azim=-10.0, roll=0.0)
+ax.set_xlabel("PTRecency")
+ax.set_ylabel("PTFrequency")
+ax.set_zlabel("PTAvgSpent")
+plt.show()
+
+# %%
+# Features yielded by quantile transform
+fig = plt.figure(figsize=(8.0, 6.5), layout="tight")
+ax = fig.add_subplot(projection="3d")
+ax = cast(Axes3D, ax)
+ax.scatter(df.QTRecency, df.QTFrequency, df.QTAvgSpent)
+ax.view_init(elev=55.0, azim=3.0, roll=0.0)
+ax.set_xlabel("QTRecency")
+ax.set_ylabel("QTFrequency")
+ax.set_zlabel("QTAvgSpent")
+plt.show()
+
+# %% [markdown]
+# Based on the above figures, the power transform features seem the most
+# useful. After all, in the corresponding plot, we can see a few clusters quite
+# clearly.
