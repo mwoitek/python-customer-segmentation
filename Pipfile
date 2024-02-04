@@ -13,6 +13,7 @@ more-itertools = "*"
 pyarrow = "*"
 seaborn = "*"
 scikit-learn = "*"
+yellowbrick = "*"
 
 [dev-packages]
 pygobject = "*"

@@ -19,6 +19,15 @@ from mpl_toolkits.mplot3d.axes3d import Axes3D
 from pandas.testing import assert_series_equal
 from sklearn.cluster import KMeans
 
+# %%
+# This package messes with the fonts used by matplotlib. This is my workaround:
+fonts = plt.rcParams["font.sans-serif"]
+
+from yellowbrick.cluster.elbow import KElbowVisualizer
+
+plt.rcParams["font.sans-serif"] = fonts
+del fonts
+
 # %% [markdown]
 # ## Read features
 #
@@ -235,3 +244,48 @@ plot_clusters(
     k=5,
     save=True,
 )
+
+# %% [markdown]
+# ## Elbow plot: Find the optimal value of k
+
+# %%
+features = ["PTRecency", "PTFrequency", "PTAvgSpent"]
+X = df[features].to_numpy()
+
+# %%
+# Distortion
+fig = plt.figure(figsize=(8.0, 6.5), layout="tight")
+ax = fig.add_subplot()
+
+kmeans = KMeans(max_iter=1000, random_state=333)
+visualizer = KElbowVisualizer(
+    kmeans,
+    k=16,
+    metric="distortion",
+    timings=False,
+    ax=ax,
+)
+visualizer.fit(X)
+visualizer.show()
+
+ax.set_xticks(list(range(2, 17)))
+plt.show()
+
+# %%
+# Silhouette: This plot doesn't look like an elbow!!!
+fig = plt.figure(figsize=(8.0, 6.5), layout="tight")
+ax = fig.add_subplot()
+
+kmeans = KMeans(max_iter=1000, random_state=333)
+visualizer = KElbowVisualizer(
+    kmeans,
+    k=16,
+    metric="silhouette",
+    timings=False,
+    ax=ax,
+)
+visualizer.fit(X)
+visualizer.show()
+
+ax.set_xticks(list(range(2, 17)))
+plt.show()
