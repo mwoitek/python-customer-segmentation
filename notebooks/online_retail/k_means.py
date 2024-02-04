@@ -7,10 +7,15 @@
 # ## Imports
 
 # %%
+import random
 from pathlib import Path
+from typing import cast
 
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from mpl_toolkits.mplot3d.axes3d import Axes3D
 from pandas.testing import assert_series_equal
 from sklearn.cluster import KMeans
 
@@ -122,3 +127,111 @@ df = add_cluster_labels(
     k=5,
 )
 assert_series_equal(df.ClusterLabel5, old_labels)
+
+# %%
+del old_labels
+
+# %% [markdown]
+# ### Plot clusters
+
+# %%
+fig = plt.figure(figsize=(8.0, 6.5), layout="tight")
+ax = fig.add_subplot(projection="3d")
+ax = cast(Axes3D, ax)
+
+colors = list(mpl.colormaps["Dark2"].colors)[:5]  # pyright: ignore [reportAttributeAccessIssue]
+markers = ["*", "D", "P", "X", "^"]
+
+for i in range(5):
+    cluster_label = i + 1
+    df_cluster = df[df["ClusterLabel5"] == cluster_label]
+    ax.scatter(
+        df_cluster["PTRecency"],
+        df_cluster["PTFrequency"],
+        df_cluster["PTAvgSpent"],
+        color=colors[i],
+        marker=markers[i],
+        label=f"Cluster {cluster_label}",
+    )
+
+ax.view_init(elev=31.0, azim=16.0, roll=0.0)
+ax.legend()
+ax.set_xlabel("PTRecency")
+ax.set_ylabel("PTFrequency")
+ax.set_zlabel("PTAvgSpent")
+
+plt.show()
+
+# %% [markdown]
+# These results don't look very good. But that's not the point. What matters is
+# that the code above works. Next, we'll generalize this code, and create a
+# function.
+
+# %%
+# Path to images directory
+IMG_DIR = Path.cwd().parents[1] / "img"
+assert IMG_DIR.exists(), f"directory doesn't exist: {IMG_DIR}"
+assert IMG_DIR.is_dir(), f"not a directory: {IMG_DIR}"
+
+# %%
+# Define colors and markers
+random.seed(a=333)
+
+COLORS = list(mpl.colormaps["Dark2"].colors)  # pyright: ignore [reportAttributeAccessIssue]
+COLORS.extend(list(mpl.colormaps["Set2"].colors))  # pyright: ignore [reportAttributeAccessIssue]
+random.shuffle(COLORS)
+assert len(COLORS) == 16
+
+MARKERS = ["*", ".", "8", "<", ">", "D", "H", "P", "X", "^", "d", "h", "o", "p", "s", "v"]
+random.shuffle(MARKERS)
+assert len(MARKERS) == 16
+
+
+# %%
+def plot_clusters(
+    df: pd.DataFrame,
+    *,
+    features: list[str],
+    k: int,
+    save: bool = False,
+    figsize: tuple[float, float] = (8.0, 6.5),
+) -> None:
+    fig = plt.figure(figsize=figsize, layout="tight")
+    ax = fig.add_subplot(projection="3d")
+    ax = cast(Axes3D, ax)
+
+    xlabel, ylabel, zlabel = features
+
+    for i in range(k):
+        cluster_label = i + 1
+        df_cluster = df[df[f"ClusterLabel{k}"] == cluster_label]
+        ax.scatter(
+            df_cluster[xlabel],
+            df_cluster[ylabel],
+            df_cluster[zlabel],
+            color=COLORS[i],
+            marker=MARKERS[i],
+            label=f"Cluster {cluster_label}",
+        )
+
+    ax.view_init(elev=31.0, azim=16.0, roll=0.0)
+    ax.legend()
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.set_zlabel(zlabel)
+
+    if save:
+        out_img = IMG_DIR / f"clusters_{k}.png"
+        fig.savefig(out_img)
+        plt.close(fig)
+    else:
+        plt.show()
+
+
+# %%
+plot_clusters(
+    df,
+    features=["PTRecency", "PTFrequency", "PTAvgSpent"],
+    k=5,
+    save=True,
+)
