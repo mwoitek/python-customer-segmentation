@@ -9,7 +9,7 @@
 # %%
 import random
 from pathlib import Path
-from typing import cast
+from typing import Literal, cast
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -247,13 +247,17 @@ plot_clusters(
 
 # %% [markdown]
 # ## Elbow plot: Find the optimal value of k
+#
+# This method is considered **unreliable**. But it's simple to apply it with
+# the aid of the `yellowbrick` package. So, just out of curiosity, we're going
+# to check out the kind of result the elbow method yields.
 
 # %%
 features = ["PTRecency", "PTFrequency", "PTAvgSpent"]
 X = df[features].to_numpy()
 
 # %%
-# Distortion
+# Distortion: Mean sum of squared distances to centers
 fig = plt.figure(figsize=(8.0, 6.5), layout="tight")
 ax = fig.add_subplot()
 
@@ -268,24 +272,147 @@ visualizer = KElbowVisualizer(
 visualizer.fit(X)
 visualizer.show()
 
+ax.set_title("Distortion Score for k-means Clustering")
+ax.set_ylabel("Distortion score")
+ax.set_xlabel("Number of clusters k")
 ax.set_xticks(list(range(2, 17)))
+
 plt.show()
 
+# %% [markdown]
+# One could say that in the above figure there's no clear elbow. This is one of
+# the situations in which this approach is considered unreliable.
+
 # %%
-# Silhouette: This plot doesn't look like an elbow!!!
+# Silhouette: Mean ratio of intra-cluster and nearest-cluster distances
 fig = plt.figure(figsize=(8.0, 6.5), layout="tight")
 ax = fig.add_subplot()
+
+ks = list(range(4, 17))
 
 kmeans = KMeans(max_iter=1000, random_state=333)
 visualizer = KElbowVisualizer(
     kmeans,
-    k=16,
+    k=ks,  # pyright: ignore [reportArgumentType]
     metric="silhouette",
     timings=False,
+    locate_elbow=False,
     ax=ax,
 )
 visualizer.fit(X)
 visualizer.show()
 
-ax.set_xticks(list(range(2, 17)))
+ax.set_title("Silhouette Score for k-means Clustering")
+ax.set_ylabel("Silhouette score")
+ax.set_xlabel("Number of clusters k")
+ax.set_xticks(ks)
+
 plt.show()
+
+# %% [markdown]
+# This plot doesn't even look like an elbow!!! Furthermore, based on what I saw
+# in a couple of papers, this type of silhouette plot doesn't have a
+# well-defined pattern. Then, if the goal is to find the optimal value of k,
+# using this figure doesn't seem like a good idea.
+#
+# However, the plot above has its value. In this case, it shows that the
+# silhouette coefficients aren't close to 1 (the ideal value). So this plot
+# gives us an indication that our model isn't producing very good results.
+
+# %%
+# Calinski-Harabasz: Ratio of within to between cluster dispersion
+fig = plt.figure(figsize=(8.0, 6.5), layout="tight")
+ax = fig.add_subplot()
+
+ks = list(range(4, 17))
+
+kmeans = KMeans(max_iter=1000, random_state=333)
+visualizer = KElbowVisualizer(
+    kmeans,
+    k=ks,  # pyright: ignore [reportArgumentType]
+    metric="calinski_harabasz",
+    timings=False,
+    locate_elbow=False,
+    ax=ax,
+)
+visualizer.fit(X)
+visualizer.show()
+
+ax.set_title("Calinski-Harabasz Index for k-means Clustering")
+ax.set_ylabel("Calinski-Harabasz index")
+ax.set_xlabel("Number of clusters k")
+ax.set_xticks(ks)
+
+plt.show()
+
+# %% [markdown]
+# This plot should have a peak. This indicates that there's a problem with our
+# model. However, this code seems to be working correctly. So, before trying
+# anything else, we'll define a function for recreating the figures above.
+
+
+# %%
+def plot_elbow(
+    df: pd.DataFrame,
+    *,
+    features: list[str],
+    ks: list[int],
+    metric: Literal["calinski_harabasz", "distortion", "silhouette"] = "distortion",
+    save: bool = False,
+    figsize: tuple[float, float] = (8.0, 6.5),
+) -> None:
+    fig = plt.figure(figsize=figsize, layout="tight")
+    ax = fig.add_subplot()
+
+    locate_elbow = metric == "distortion"
+    visualizer = KElbowVisualizer(
+        KMeans(max_iter=1000, random_state=333),
+        k=ks,  # pyright: ignore [reportArgumentType]
+        metric=metric,
+        locate_elbow=locate_elbow,
+        ax=ax,
+        timings=False,
+    )
+    visualizer.fit(df[features].to_numpy())
+    visualizer.draw()
+
+    if locate_elbow:
+        handles, _ = ax.get_legend_handles_labels()
+        ax.legend(
+            handles=[handles[0]],
+            loc="best",
+            fontsize="medium",
+            frameon=True,
+        )
+
+    metric_label = (
+        "Calinski-Harabasz index" if metric == "calinski_harabasz" else f"{metric.capitalize()} score"
+    )
+    ax.set_title(f"{metric_label.title()} for k-means Clustering")
+    ax.set_ylabel(metric_label)
+    ax.set_xlabel("Number of clusters k")
+    ax.set_xticks(ks)
+
+    if save:
+        out_img = IMG_DIR / f"elbow_{metric}.png"
+        fig.savefig(out_img)
+        plt.close(fig)
+    else:
+        plt.show()
+
+
+# %% [markdown]
+# Testing this function with another set of features:
+
+# %%
+features = ["QTRecency", "QTFrequency", "QTAvgSpent"]
+ks = list(range(4, 17))
+
+# %%
+plot_elbow(df, metric="distortion", features=features, ks=ks)
+
+# %%
+plot_elbow(df, metric="silhouette", features=features, ks=ks)
+
+# %%
+plot_elbow(df, metric="calinski_harabasz", features=features, ks=ks)
