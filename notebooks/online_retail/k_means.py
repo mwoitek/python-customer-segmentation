@@ -24,6 +24,7 @@ from sklearn.cluster import KMeans
 fonts = plt.rcParams["font.sans-serif"]
 
 from yellowbrick.cluster.elbow import KElbowVisualizer
+from yellowbrick.cluster.silhouette import SilhouetteVisualizer
 
 plt.rcParams["font.sans-serif"] = fonts
 del fonts
@@ -416,3 +417,84 @@ plot_elbow(df, metric="silhouette", features=features, ks=ks)
 
 # %%
 plot_elbow(df, metric="calinski_harabasz", features=features, ks=ks)
+
+# %% [markdown]
+# ## Silhouette analysis
+
+# %%
+# Use the same set of features as above
+features = ["QTRecency", "QTFrequency", "QTAvgSpent"]
+X = df[features].to_numpy()
+
+# %%
+# k = 5
+fig = plt.figure(figsize=(8.0, 6.5), layout="tight")
+ax = fig.add_subplot()
+kmeans = KMeans(n_clusters=5, max_iter=1000, random_state=333)
+visualizer = SilhouetteVisualizer(kmeans, colors="Dark2", ax=ax)
+visualizer.fit(X)
+visualizer.show()
+plt.show()
+
+# %%
+# Alternative implementation
+fig = plt.figure(figsize=(8.0, 6.5), layout="tight")
+ax = fig.add_subplot()
+
+kmeans = KMeans(n_clusters=5, max_iter=1000, random_state=333)
+visualizer = SilhouetteVisualizer(kmeans, colors=COLORS, ax=ax)
+visualizer.fit(X)
+visualizer.finalize()
+
+ax.set_title("Silhouette Plot of k-Means Clustering for k = 5")
+ax.set_xlabel("Silhouette coefficient")
+ax.set_ylabel("Cluster label")
+ax.set_yticklabels([str(i) for i in range(1, 6)])
+
+plt.show()
+
+
+# %%
+def silhouette_plot(
+    df: pd.DataFrame,
+    *,
+    features: list[str],
+    k: int,
+    save: bool = False,
+    figsize: tuple[float, float] = (8.0, 6.5),
+) -> None:
+    fig = plt.figure(figsize=figsize, layout="tight")
+    ax = fig.add_subplot()
+
+    kmeans = KMeans(n_clusters=k, max_iter=1000, random_state=333)
+    visualizer = SilhouetteVisualizer(kmeans, colors=COLORS, ax=ax)
+    visualizer.fit(df[features].to_numpy())
+    visualizer.finalize()
+
+    ax.set_title(f"Silhouette Plot of k-Means Clustering for k = {k}")
+    ax.set_xlabel("Silhouette coefficient")
+    ax.set_ylabel("Cluster label")
+    ax.set_yticklabels([str(i) for i in range(1, k + 1)])
+
+    if save:
+        out_img = IMG_DIR / f"silhouette_plot_{k}.png"
+        fig.savefig(out_img)
+        plt.close(fig)
+    else:
+        plt.show()
+
+
+# %%
+silhouette_plot(df, k=6, features=features)
+
+# %%
+silhouette_plot(df, k=7, features=features)
+
+# %%
+silhouette_plot(df, k=8, features=features)
+
+# %% [markdown]
+# Some of these results are decent. But none of them look very good. Assuming
+# my code works correctly, either there's a problem with the features I used or
+# the k-means algorithm isn't the most appropriate. I need to investigate these
+# possibilities. So for now this notebook is finished.
