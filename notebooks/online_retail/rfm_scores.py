@@ -180,7 +180,13 @@ assert (df_rfm["Monetary"] > 0.0).all()
 # %% [markdown]
 # ## Dealing with outliers
 #
-# Visualizing distributions:
+# Later, I'll use the RFM attributes to do customer segmentation with the aid
+# of clustering algorithms. In these cases, the presence of outliers in the
+# dataset may lead to poor results. For this reason, I'll implement a function
+# for removing outliers.
+#
+# First, let's confirm that in this case there are outliers. To do so, I'll
+# create a boxplot for each RFM attribute:
 
 # %%
 # Recency
@@ -216,7 +222,16 @@ ax.set_ylim(bottom=0)
 plt.show()
 
 # %% [markdown]
-# Removing outliers:
+# Clearly, all RFM attributes have outliers. But the situation is "worse" for
+# `Frequency` and `Monetary`. There may be an explanation for this. Some of the
+# online retailer's customers are wholesale stores. It's reasonable to assume
+# that such customers make purchases very frequently, and spend a good amount
+# of money. This explains at least a portion of the outliers for `Frequency`
+# and `Monetary`.
+#
+# Next, we'll write code that removes outliers. We'll identify such
+# observations by adopting the same approach that's used to create boxplots.
+# Figuring out the best way to do this:
 
 # %%
 # Compute quantiles and bounds
@@ -253,7 +268,8 @@ for col in cols:
 len(idxs)
 
 # %% [markdown]
-# Using the above code to define a couple of functions:
+# Using the above code to define a couple of functions that allow us to remove
+# outliers:
 
 
 # %%
@@ -278,6 +294,7 @@ def compute_outlier_bounds(df: pd.DataFrame, columns: str | list[str]) -> pd.Dat
 
 
 # %%
+# Decorator that prints the number of rows dropped
 def count_dropped(func: Callable) -> Callable:
     @functools.wraps(func)
     def wrapper(df: pd.DataFrame, *args, **kwargs) -> pd.DataFrame:
@@ -310,8 +327,11 @@ def remove_outliers(df: pd.DataFrame, columns: str | list[str]) -> pd.DataFrame:
 
 
 # %%
+# At this point, this step isn't necessary. This command is here just for
+# testing.
+
 # Remove outliers from `Frequency` and `Monetary`
-df_rfm = remove_outliers(df_rfm, columns=["Frequency", "Monetary"])
+# df_rfm = remove_outliers(df_rfm, columns=["Frequency", "Monetary"])
 
 # %% [markdown]
 # ### Summarizing through functions
@@ -358,6 +378,9 @@ prepared_data = read_prepared_data(file_path)
 assert_frame_equal(prepared_data, df)
 
 # %%
+# Correct command when outliers have been removed:
+# rfm_attrs = compute_rfm_attributes(prepared_data).pipe(remove_outliers, ["Frequency", "Monetary"])
+
 rfm_attrs = compute_rfm_attributes(prepared_data)
 assert_frame_equal(rfm_attrs, df_rfm)
 
@@ -522,7 +545,7 @@ plot_distribution_by_score(df_rfm, "Frequency")
 # %%
 df_rfm.Frequency.transform(lambda f: "1 purchase" if f == 1 else "2 or more purchases").value_counts(
     normalize=True, sort=False
-).mul(100.0).transform(lambda p: f"{p:.2f}%")
+).mul(100.0).transform(lambda p: f"{p:.2f}%").sort_index()
 
 # %% [markdown]
 # In fact, all customers who purchased only once were assigned an F score of 1:
@@ -600,16 +623,22 @@ plot_distribution_by_score(df_rfm, "Monetary")
 
 
 # %%
-def compute_and_save_rfm_scores(file_path: Path, num_bins: int = 5) -> None:
-    prepared_data = read_prepared_data(file_path)
-    df_rfm = compute_rfm_attributes(prepared_data)
-    df_rfm = add_rfm_scores(df_rfm, num_bins)
-    out_file = file_path.parent / f"rfm_scores_{num_bins}.csv"
-    df_rfm.to_csv(out_file, index=True)
+def compute_and_save_rfm_scores(
+    file_path: Path,
+    num_bins: int = 5,
+    outlier_cols: str | list[str] | None = None,
+) -> None:
+    df_rfm = read_prepared_data(file_path).pipe(compute_rfm_attributes)
+    if outlier_cols is not None:
+        df_rfm = remove_outliers(df_rfm, outlier_cols)
+    add_rfm_scores(df_rfm, num_bins).to_csv(
+        file_path.parent / f"rfm_scores_{num_bins}.csv",
+        index=True,
+    )
 
 
 # %%
-# compute_and_save_rfm_scores(Path.cwd().parents[1] / "data" / "online_retail.csv", num_bins=5)
+compute_and_save_rfm_scores(Path.cwd().parents[1] / "data" / "online_retail.csv", num_bins=5)
 
 
 # %%
