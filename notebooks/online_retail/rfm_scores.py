@@ -6,6 +6,8 @@
 # ## Imports
 
 # %%
+import functools
+from collections.abc import Callable
 from pathlib import Path
 from typing import Literal, cast, get_args
 
@@ -174,6 +176,142 @@ df_rfm.info()
 assert (df_rfm["Recency"] > 0).all()
 assert (df_rfm["Frequency"] > 0).all()
 assert (df_rfm["Monetary"] > 0.0).all()
+
+# %% [markdown]
+# ## Dealing with outliers
+#
+# Visualizing distributions:
+
+# %%
+# Recency
+fig = plt.figure(figsize=(6.0, 6.0), layout="tight")
+ax = fig.add_subplot()
+ax.boxplot(df_rfm.Recency, showfliers=True)
+ax.set_title("Distribution of Recency")
+ax.set_xticks([])
+ax.set_ylabel("Recency (days)")
+ax.set_ylim(bottom=0)
+plt.show()
+
+# %%
+# Frequency
+fig = plt.figure(figsize=(6.0, 6.0), layout="tight")
+ax = fig.add_subplot()
+ax.boxplot(df_rfm.Frequency, showfliers=True)
+ax.set_title("Distribution of Frequency")
+ax.set_xticks([])
+ax.set_ylabel("Frequency (purchases)")
+ax.set_ylim(bottom=0)
+plt.show()
+
+# %%
+# Monetary
+fig = plt.figure(figsize=(6.0, 6.0), layout="tight")
+ax = fig.add_subplot()
+ax.boxplot(df_rfm.Monetary, showfliers=True)
+ax.set_title("Distribution of Monetary")
+ax.set_xticks([])
+ax.set_ylabel("Monetary (£)")
+ax.set_ylim(bottom=0)
+plt.show()
+
+# %% [markdown]
+# Removing outliers:
+
+# %%
+# Compute quantiles and bounds
+cols = ["Frequency", "Monetary"]
+quantiles_and_bounds = (
+    pd.concat(
+        [
+            df_rfm[cols].quantile(q=0.25).rename("Q1"),
+            df_rfm[cols].quantile(q=0.75).rename("Q3"),
+        ],
+        axis=1,
+    )
+    .assign(
+        IQR=lambda x: x.Q3 - x.Q1,
+        LowerBound=lambda x: x.Q1 - 1.5 * x.IQR,
+        UpperBound=lambda x: x.Q3 + 1.5 * x.IQR,
+    )
+    .transpose()
+)
+quantiles_and_bounds
+
+# %%
+# Select indexes I want to KEEP
+bounds = quantiles_and_bounds.loc[["LowerBound", "UpperBound"], :]
+idxs = df_rfm.index
+
+for col in cols:
+    mask_lower = df_rfm[col] < bounds.loc["LowerBound", col]
+    idxs = idxs.drop(df_rfm[mask_lower].index, errors="ignore")
+
+    mask_upper = df_rfm[col] > bounds.loc["UpperBound", col]
+    idxs = idxs.drop(df_rfm[mask_upper].index, errors="ignore")
+
+len(idxs)
+
+# %% [markdown]
+# Using the above code to define a couple of functions:
+
+
+# %%
+def compute_outlier_bounds(df: pd.DataFrame, columns: str | list[str]) -> pd.DataFrame:
+    if isinstance(columns, str):
+        columns = [columns]
+    return (
+        pd.concat(
+            [
+                df[columns].quantile(q=0.25).rename("Q1"),
+                df[columns].quantile(q=0.75).rename("Q3"),
+            ],
+            axis=1,
+        )
+        .assign(
+            IQR=lambda x: x.Q3 - x.Q1,
+            LowerBound=lambda x: x.Q1 - 1.5 * x.IQR,
+            UpperBound=lambda x: x.Q3 + 1.5 * x.IQR,
+        )
+        .transpose()
+    ).loc[["LowerBound", "UpperBound"], :]
+
+
+# %%
+def count_dropped(func: Callable) -> Callable:
+    @functools.wraps(func)
+    def wrapper(df: pd.DataFrame, *args, **kwargs) -> pd.DataFrame:
+        size_before = df.shape[0]
+        df = func(df, *args, **kwargs)
+        num_dropped = size_before - df.shape[0]
+        print(f"Number of observations dropped: {num_dropped}")
+        return df
+
+    return wrapper
+
+
+# %%
+@count_dropped
+def remove_outliers(df: pd.DataFrame, columns: str | list[str]) -> pd.DataFrame:
+    bounds = compute_outlier_bounds(df, columns)
+    idxs = df.index
+
+    if isinstance(columns, str):
+        columns = [columns]
+
+    for column in columns:
+        mask_lower = df[column] < bounds.loc["LowerBound", column]
+        idxs = idxs.drop(df[mask_lower].index, errors="ignore")
+
+        mask_upper = df[column] > bounds.loc["UpperBound", column]
+        idxs = idxs.drop(df[mask_upper].index, errors="ignore")
+
+    return df.loc[idxs, :]
+
+
+# %%
+# Remove outliers from `Frequency` and `Monetary`
+df_rfm = remove_outliers(df_rfm, columns=["Frequency", "Monetary"])
 
 # %% [markdown]
 # ### Summarizing through functions
