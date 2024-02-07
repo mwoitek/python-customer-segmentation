@@ -4,6 +4,7 @@ from typing import cast
 import numpy as np
 import pandas as pd
 
+from utils.outliers import remove_outliers
 from utils.rfm import add_rfm_scores, label_customers
 
 
@@ -87,12 +88,18 @@ def compute_rfm_attributes(df: pd.DataFrame) -> pd.DataFrame:
     return df_rfm
 
 
-def compute_and_save_rfm_scores(file_path: Path, num_bins: int = 5) -> None:
-    prepared_data = read_prepared_data(file_path)
-    df_rfm = compute_rfm_attributes(prepared_data)
-    df_rfm = add_rfm_scores(df_rfm, num_bins)
-    out_file = file_path.parent / f"rfm_scores_{num_bins}.csv"
-    df_rfm.to_csv(out_file, index=True)
+def compute_and_save_rfm_scores(
+    file_path: Path,
+    num_bins: int = 5,
+    outlier_cols: str | list[str] | None = None,
+) -> None:
+    df_rfm = read_prepared_data(file_path).pipe(compute_rfm_attributes)
+    if outlier_cols is not None:
+        df_rfm = remove_outliers(df_rfm, outlier_cols)
+    add_rfm_scores(df_rfm, num_bins).to_csv(
+        file_path.parent / f"rfm_scores_{num_bins}.csv",
+        index=True,
+    )
 
 
 def read_rfm_scores(file_path: Path) -> pd.DataFrame:
