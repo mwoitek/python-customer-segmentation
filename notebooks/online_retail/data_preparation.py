@@ -78,6 +78,11 @@ df = cast(pd.DataFrame, df)
 assert df["InvoiceNo"].astype(str).str.startswith("C").sum() == 0, "there are remaining canceled transactions"
 
 # %%
+# Check that the remaining values of InvoiceNo are OK
+assert (df.InvoiceNo.astype(str).str.len() == 6).all()
+assert df.InvoiceNo.astype(str).str.isdigit().all()
+
+# %%
 # Look for invalid prices
 (df["UnitPrice"] == 0.0).sum()
 
