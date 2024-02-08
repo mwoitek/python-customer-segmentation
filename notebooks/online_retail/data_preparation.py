@@ -188,13 +188,13 @@ del df_func
 # value of `InvoiceNo`, this can be tested as follows:
 
 # %%
-df.loc[df["InvoiceNo"] == 536365, "InvoiceDate"].nunique() == 1
+assert df.loc[df["InvoiceNo"] == 536365, "InvoiceDate"].nunique() == 1
 
 # %% [markdown]
 # To test all values of `InvoiceNo`, one can do the following:
 
 # %%
-df.groupby(by="InvoiceNo", observed=True).InvoiceDate.nunique().eq(1).all()
+assert df.groupby(by="InvoiceNo", observed=True).InvoiceDate.nunique().eq(1).all()
 
 # %% [markdown]
 # Similarly, rows with the same `InvoiceNo` must also have the same
@@ -202,11 +202,11 @@ df.groupby(by="InvoiceNo", observed=True).InvoiceDate.nunique().eq(1).all()
 
 # %%
 # Single value
-df.loc[df["InvoiceNo"] == 536365, "CustomerID"].nunique() == 1
+assert df.loc[df["InvoiceNo"] == 536365, "CustomerID"].nunique() == 1
 
 # %%
 # All values
-df.groupby(by="InvoiceNo", observed=True).CustomerID.nunique().eq(1).all()
+assert df.groupby(by="InvoiceNo", observed=True).CustomerID.nunique().eq(1).all()
 
 # %% [markdown]
 # Everything is OK. Then I'll compute the total amount spent for each
@@ -214,7 +214,7 @@ df.groupby(by="InvoiceNo", observed=True).CustomerID.nunique().eq(1).all()
 
 # %%
 # Figuring out how to do it
-tmp_df = df.loc[df["InvoiceNo"] == 536365, :]
+tmp_df = df[df.InvoiceNo == 536365]
 tmp_df = cast(pd.DataFrame, tmp_df)
 tmp_df
 
@@ -235,12 +235,12 @@ del tmp_row
 
 # %%
 # Actual calculation
-def compute_total_price(df_group: pd.DataFrame) -> pd.Series:
+def compute_total_price(df: pd.DataFrame) -> pd.Series:
     return pd.Series(
         data={
-            "InvoiceDate": df_group["InvoiceDate"].iloc[0],
-            "CustomerID": df_group["CustomerID"].iloc[0],
-            "TotalPrice": (df_group["Quantity"] * df_group["UnitPrice"]).sum(),
+            "InvoiceDate": df["InvoiceDate"].iloc[0],
+            "CustomerID": df["CustomerID"].iloc[0],
+            "TotalPrice": (df["Quantity"] * df["UnitPrice"]).sum(),
         }
     )
 
@@ -255,6 +255,28 @@ df_total.head()
 df_total.info()
 
 # %% [markdown]
+# I'll use this code in other notebooks. For this reason, I'll define a
+# function that returns the aggregated data. This function doesn't do much, but
+# it is convenient.
+
+
+# %%
+def get_aggregated_data(file_path: Path) -> pd.DataFrame:
+    return (
+        get_clean_data(file_path)
+        .groupby(by="InvoiceNo", observed=True)
+        .apply(compute_total_price, include_groups=False)
+        .reset_index()
+    )
+
+
+# %%
+# Quick check
+df_func = get_aggregated_data(file_path)
+assert_frame_equal(df_func, df_total)
+del df_func
+
+# %% [markdown]
 # ## Save prepared data
 #
 # Clearly, I've ended up with a much smaller dataset than the original. To
@@ -262,29 +284,7 @@ df_total.info()
 # CSV file.
 
 # %%
-# File path for output CSV
-out_file = file_path.parent / "online_retail.csv"
+# Path to output CSV
+out_file = file_path.with_suffix(".csv")
 
 df_total.to_csv(out_file, index=False)
-
-# %% [markdown]
-# ## Summarizing through a function
-#
-# To conclude, I'll implement a function that summarizes what was done in
-# this notebook.
-
-
-# %%
-def prepare_and_save_data(file_path: Path) -> None:
-    clean_data = get_clean_data(file_path)
-    aggregated_data = (
-        clean_data.groupby("InvoiceNo", observed=True)
-        .apply(compute_total_price, include_groups=False)
-        .reset_index()
-    )
-    out_file = file_path.with_suffix(".csv")
-    aggregated_data.to_csv(out_file, index=False)
-
-
-# %%
-prepare_and_save_data(Path.cwd().parents[1] / "data" / "online_retail.xlsx")
