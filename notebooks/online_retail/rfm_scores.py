@@ -1,7 +1,7 @@
 # %% [markdown]
 # # Online Retail Dataset: RFM Scores
 #
-# In this notebook, I'll use the prepared dataset to compute the RFM scores.
+# In this notebook, I'll use the customer data to compute the RFM scores.
 #
 # ## Imports
 
@@ -22,13 +22,12 @@ from pandas.testing import assert_frame_equal, assert_index_equal, assert_series
 from utils.rfm import RFMAttribute, add_rfm_scores
 
 # %% [markdown]
-# ## Read prepared dataset
+# ## Read customer data
 
 # %%
-# File path for dataset
+# Path to dataset
 file_path = Path.cwd().parents[1] / "data" / "online_retail.csv"
 assert file_path.exists(), f"file doesn't exist: {file_path}"
-assert file_path.is_file(), f"not a file: {file_path}"
 
 # %%
 df = pd.read_csv(
@@ -45,12 +44,27 @@ df.head(15)
 # %%
 df.info()
 
+
+# %%
+# This may seem redundant, but it allows this code to be reused later
+def read_customer_data(file_path: Path) -> pd.DataFrame:
+    return pd.read_csv(
+        file_path,
+        dtype={
+            "InvoiceNo": "category",
+            "CustomerID": "category",
+            "TotalPrice": np.float_,
+        },
+        parse_dates=["InvoiceDate"],
+    )
+
+
 # %% [markdown]
 # ## Compute RFM attributes
 # ### Recency
 #
-# To calculate the recency, I'll pretend that I'm performing this analysis 1
-# day after the last piece of data was collected.
+# **To calculate the recency, I'll pretend that I'm performing this analysis 1
+# day after the last piece of data was collected.**
 
 # %%
 today = df["InvoiceDate"].max() + pd.Timedelta(days=1)
@@ -67,11 +81,8 @@ today
 
 # %%
 # Recency for all customers
-recency = (today - df.groupby(by="CustomerID", observed=True).InvoiceDate.max()).dt.days
+recency = (today - df.groupby(by="CustomerID", observed=True).InvoiceDate.max()).dt.days.rename("Recency")
 recency = cast(pd.Series, recency)
-
-assert (recency > 0).all()
-
 recency.head()
 
 # %%
@@ -87,12 +98,10 @@ df_rfm = (
     .InvoiceDate.max()
     .to_frame()
     .rename(columns={"InvoiceDate": "LastPurchaseDate"})
+    .assign(Recency=lambda x: (today - x.LastPurchaseDate).dt.days)
+    .drop(columns="LastPurchaseDate")
 )
 df_rfm = cast(pd.DataFrame, df_rfm)
-
-df_rfm["Recency"] = (today - df_rfm["LastPurchaseDate"]).dt.days
-df_rfm = df_rfm.drop(columns="LastPurchaseDate")
-
 df_rfm.head()
 
 # %% [markdown]
@@ -107,22 +116,22 @@ df_rfm.head()
 df[df["CustomerID"] == "14688"].shape[0]
 
 # %%
+# Alternative solution
 df.loc[df["CustomerID"] == "14688", "InvoiceNo"].nunique()
 
 # %%
 # Frequency for all customers
-freq_1 = df.groupby(by="CustomerID", observed=True).InvoiceNo.count()
+freq_1 = df.groupby(by="CustomerID", observed=True).InvoiceNo.count().rename("Frequency")
 freq_1 = cast(pd.Series, freq_1)
-freq_1.name = "Frequency"
 freq_1.head()
 
 # %%
 freq_1.loc["14688"]
 
 # %%
-freq_2 = df.groupby(by="CustomerID", observed=True).InvoiceNo.nunique()
+# Alternative solution
+freq_2 = df.groupby(by="CustomerID", observed=True).InvoiceNo.nunique().rename("Frequency")
 freq_2 = cast(pd.Series, freq_2)
-freq_2.name = "Frequency"
 freq_2.head()
 
 # %%
@@ -135,15 +144,16 @@ assert_series_equal(freq_1, freq_2)
 # %%
 assert_index_equal(df_rfm.index, freq_1.index)
 
+# %%
 df_rfm["Frequency"] = df.groupby(by="CustomerID", observed=True).InvoiceNo.count()
 df_rfm.head()
 
 # %% [markdown]
 # ### Monetary
 #
-# Here I'll use the following definition of monetary: for a given customer,
-# monetary corresponds to the total amount spent by him/her. Figuring out the
-# best way to evaluate this quantity:
+# Here I'll use the following definition of monetary (value): for a given
+# customer, monetary corresponds to the total amount spent by him/her. Figuring
+# out the best way to evaluate this quantity:
 
 # %%
 # Monetary for a particular customer
@@ -151,7 +161,7 @@ df.loc[df["CustomerID"] == "14688", "TotalPrice"].sum()
 
 # %%
 # Monetary for all customers
-monetary = df.groupby(by="CustomerID", observed=True).TotalPrice.sum()
+monetary = df.groupby(by="CustomerID", observed=True).TotalPrice.sum().rename("Monetary")
 monetary = cast(pd.Series, monetary)
 monetary.head()
 
@@ -165,6 +175,7 @@ monetary.loc["14688"]
 # %%
 assert_index_equal(df_rfm.index, monetary.index)
 
+# %%
 df_rfm["Monetary"] = df.groupby(by="CustomerID", observed=True).TotalPrice.sum()
 df_rfm.head()
 
@@ -176,6 +187,42 @@ df_rfm.info()
 assert (df_rfm["Recency"] > 0).all()
 assert (df_rfm["Frequency"] > 0).all()
 assert (df_rfm["Monetary"] > 0.0).all()
+
+# %% [markdown]
+# At this point, all RFM attributes have been evaluated. Before proceeding,
+# let's collect the essential parts of the above code, and transform them into
+# a function:
+
+
+# %%
+def compute_rfm_attributes(df: pd.DataFrame) -> pd.DataFrame:
+    today = df.InvoiceDate.max() + pd.Timedelta(days=1)
+    customer_groups = df.groupby(by="CustomerID", observed=True)
+    return (
+        customer_groups.InvoiceDate.max()
+        .to_frame()
+        .rename(columns={"InvoiceDate": "LastPurchaseDate"})
+        .assign(
+            Recency=lambda x: (today - x.LastPurchaseDate).dt.days,
+            Frequency=customer_groups.InvoiceNo.count(),
+            Monetary=customer_groups.TotalPrice.sum(),
+        )
+        .drop(columns="LastPurchaseDate")
+    )
+
+
+# %%
+# Quick tests
+customer_data = read_customer_data(file_path)
+assert_frame_equal(customer_data, df)
+
+# %%
+rfm_attrs = compute_rfm_attributes(customer_data)
+assert_frame_equal(rfm_attrs, df_rfm)
+
+# %%
+del customer_data
+del rfm_attrs
 
 # %% [markdown]
 # ## Dealing with outliers
@@ -332,61 +379,6 @@ def remove_outliers(df: pd.DataFrame, columns: str | list[str]) -> pd.DataFrame:
 
 # Remove outliers from `Frequency` and `Monetary`
 # df_rfm = remove_outliers(df_rfm, columns=["Frequency", "Monetary"])
-
-# %% [markdown]
-# ### Summarizing through functions
-#
-# At this point, all RFM attributes have been evaluated. Before proceeding,
-# let's collect the essential parts of the above code, and transform them into
-# a couple of functions.
-
-
-# %%
-def read_prepared_data(file_path: Path) -> pd.DataFrame:
-    return pd.read_csv(
-        file_path,
-        dtype={
-            "InvoiceNo": "category",
-            "CustomerID": "category",
-            "TotalPrice": np.float_,
-        },
-        parse_dates=["InvoiceDate"],
-    )
-
-
-# %%
-def compute_rfm_attributes(df: pd.DataFrame) -> pd.DataFrame:
-    customer_groups = df.groupby(by="CustomerID", observed=True)
-
-    today = df["InvoiceDate"].max() + pd.Timedelta(days=1)
-    today = cast(pd.Timestamp, today)
-
-    df_rfm = customer_groups.InvoiceDate.max().to_frame().rename(columns={"InvoiceDate": "LastPurchaseDate"})
-    df_rfm = cast(pd.DataFrame, df_rfm)
-    df_rfm["Recency"] = (today - df_rfm["LastPurchaseDate"]).dt.days
-    df_rfm = df_rfm.drop(columns="LastPurchaseDate")
-
-    df_rfm["Frequency"] = customer_groups.InvoiceNo.count()
-    df_rfm["Monetary"] = customer_groups.TotalPrice.sum()
-
-    return df_rfm
-
-
-# %%
-# Quick tests
-prepared_data = read_prepared_data(file_path)
-assert_frame_equal(prepared_data, df)
-
-# %%
-# Correct command when outliers have been removed:
-# rfm_attrs = compute_rfm_attributes(prepared_data).pipe(remove_outliers, ["Frequency", "Monetary"])
-
-rfm_attrs = compute_rfm_attributes(prepared_data)
-assert_frame_equal(rfm_attrs, df_rfm)
-
-# %%
-del prepared_data
-del rfm_attrs
 
 # %% [markdown]
 # ## Compute RFM scores
