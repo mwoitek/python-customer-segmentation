@@ -225,48 +225,43 @@ del customer_data
 del rfm_attrs
 
 # %% [markdown]
-# ## Dealing with outliers
-#
-# Later, I'll use the RFM attributes to do customer segmentation with the aid
-# of clustering algorithms. In these cases, the presence of outliers in the
-# dataset may lead to poor results. For this reason, I'll implement a function
-# for removing outliers.
-#
-# First, let's confirm that in this case there are outliers. To do so, I'll
-# create a boxplot for each RFM attribute:
+# ## Visualizing RFM attributes
+# ### Boxplots
+
+# %%
+RFM_UNITS = {
+    "Recency": "days",
+    "Frequency": "purchases",
+    "Monetary": "£",
+}
+
+
+def boxplot_rfm(
+    df: pd.DataFrame,
+    attr: RFMAttribute,
+    figsize: tuple[float, float] = (6.0, 6.0),
+) -> None:
+    fig = plt.figure(figsize=figsize, layout="tight")
+    ax = fig.add_subplot()
+    ax.boxplot(df[attr], showfliers=True)
+    ax.set_title(f"Boxplot of {attr}")
+    ax.set_xticks([])
+    ax.set_ylabel(f"{attr} ({RFM_UNITS[attr]})")
+    ax.set_ylim(bottom=0)
+    plt.show()
+
 
 # %%
 # Recency
-fig = plt.figure(figsize=(6.0, 6.0), layout="tight")
-ax = fig.add_subplot()
-ax.boxplot(df_rfm.Recency, showfliers=True)
-ax.set_title("Distribution of Recency")
-ax.set_xticks([])
-ax.set_ylabel("Recency (days)")
-ax.set_ylim(bottom=0)
-plt.show()
+boxplot_rfm(df_rfm, "Recency")
 
 # %%
 # Frequency
-fig = plt.figure(figsize=(6.0, 6.0), layout="tight")
-ax = fig.add_subplot()
-ax.boxplot(df_rfm.Frequency, showfliers=True)
-ax.set_title("Distribution of Frequency")
-ax.set_xticks([])
-ax.set_ylabel("Frequency (purchases)")
-ax.set_ylim(bottom=0)
-plt.show()
+boxplot_rfm(df_rfm, "Frequency")
 
 # %%
 # Monetary
-fig = plt.figure(figsize=(6.0, 6.0), layout="tight")
-ax = fig.add_subplot()
-ax.boxplot(df_rfm.Monetary, showfliers=True)
-ax.set_title("Distribution of Monetary")
-ax.set_xticks([])
-ax.set_ylabel("Monetary (£)")
-ax.set_ylim(bottom=0)
-plt.show()
+boxplot_rfm(df_rfm, "Monetary")
 
 # %% [markdown]
 # Clearly, all RFM attributes have outliers. But the situation is "worse" for
@@ -276,6 +271,47 @@ plt.show()
 # of money. This explains at least a portion of the outliers for `Frequency`
 # and `Monetary`.
 #
+# ### KDE plots
+
+
+# %%
+def kde_rfm(
+    df: pd.DataFrame,
+    attr: RFMAttribute,
+    figsize: tuple[float, float] = (8.0, 6.0),
+) -> None:
+    fig = plt.figure(figsize=figsize, layout="tight")
+    ax = fig.add_subplot()
+    sns.kdeplot(data=df, x=attr, ax=ax)
+    ax.set_title(f"KDE for {attr}")
+    ax.set_xlabel(f"{attr} ({RFM_UNITS[attr]})")
+    plt.show()
+
+
+# %%
+# Recency
+kde_rfm(df_rfm, "Recency")
+
+# %%
+# Frequency
+kde_rfm(df_rfm, "Frequency")
+
+# %%
+# Monetary
+kde_rfm(df_rfm, "Monetary")
+
+# %%
+# xxxxxxxxxx
+
+# %% [markdown]
+# ## Dealing with outliers
+#
+# Later, I'll use the RFM attributes to do customer segmentation with the aid
+# of clustering algorithms. In these cases, the presence of outliers in the
+# dataset may lead to poor results. For this reason, I'll implement a function
+# for removing outliers.
+
+# %% [markdown]
 # Next, we'll write code that removes outliers. We'll identify such
 # observations by adopting the same approach that's used to create boxplots.
 # Figuring out the best way to do this:

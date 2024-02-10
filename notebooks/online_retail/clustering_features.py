@@ -92,30 +92,6 @@ sns.heatmap(
 )
 plt.show()
 
-# %% [markdown]
-# ## Distributions
-
-# %%
-# Recency
-fig, ax = plt.subplots(figsize=(8.0, 6.0), layout="tight")
-ax = cast(Axes, ax)
-sns.kdeplot(data=df, x="Recency", ax=ax)
-plt.show()
-
-# %%
-# Frequency
-fig, ax = plt.subplots(figsize=(8.0, 6.0), layout="tight")
-ax = cast(Axes, ax)
-sns.kdeplot(data=df, x="Frequency", ax=ax)
-plt.show()
-
-# %%
-# Monetary
-fig, ax = plt.subplots(figsize=(8.0, 6.0), layout="tight")
-ax = cast(Axes, ax)
-sns.kdeplot(data=df, x="Monetary", ax=ax)
-plt.show()
-
 # %%
 # AvgSpent
 fig, ax = plt.subplots(figsize=(8.0, 6.0), layout="tight")
