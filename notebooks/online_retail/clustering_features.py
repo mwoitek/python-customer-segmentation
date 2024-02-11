@@ -64,18 +64,6 @@ df.info()
 # ## Correlations
 
 # %%
-# Correlation between RFM attributes
-fig, ax = plt.subplots(figsize=(6.0, 6.0), layout="tight")
-ax = cast(Axes, ax)
-sns.heatmap(
-    df[["Recency", "Frequency", "Monetary"]].corr(),
-    annot=True,
-    cmap=mpl.colormaps["coolwarm"],
-    ax=ax,
-)
-plt.show()
-
-# %%
 # New feature
 df["AvgSpent"] = df["Monetary"] / df["Frequency"]
 assert df["AvgSpent"].isna().sum() == 0

@@ -6,11 +6,10 @@
 # ## Imports
 
 # %%
-import functools
-from collections.abc import Callable
 from pathlib import Path
 from typing import Literal, cast, get_args
 
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -19,6 +18,7 @@ from matplotlib.axes import Axes
 from matplotlib.ticker import AutoMinorLocator
 from pandas.testing import assert_frame_equal, assert_index_equal, assert_series_equal
 
+from utils.decorators import count_dropped
 from utils.rfm import RFMAttribute, add_rfm_scores
 
 # %% [markdown]
@@ -226,7 +226,7 @@ del rfm_attrs
 
 # %% [markdown]
 # ## Visualizing RFM attributes
-# ### Boxplots
+# ### Boxplots {#rfm-boxplots}
 
 # %%
 RFM_UNITS = {
@@ -300,26 +300,54 @@ kde_rfm(df_rfm, "Frequency")
 # Monetary
 kde_rfm(df_rfm, "Monetary")
 
+# %% [markdown]
+# ### Correlation
+
+
 # %%
-# xxxxxxxxxx
+def correlation_heatmap(
+    df: pd.DataFrame,
+    columns: list[str] = ["Recency", "Frequency", "Monetary"],
+    figsize: tuple[float, float] = (6.0, 6.0),
+) -> None:
+    fig = plt.figure(figsize=figsize, layout="tight")
+    ax = fig.add_subplot()
+    sns.heatmap(df[columns].corr(), annot=True, cmap=mpl.colormaps["coolwarm"], ax=ax)
+    ax.set_title("Heatmap of Correlations")
+    plt.show()
+
+
+# %%
+# Correlation between RFM attributes
+correlation_heatmap(df_rfm)
 
 # %% [markdown]
 # ## Dealing with outliers
 #
 # Later, I'll use the RFM attributes to do customer segmentation with the aid
 # of clustering algorithms. In these cases, the presence of outliers in the
-# dataset may lead to poor results. For this reason, I'll implement a function
-# for removing outliers.
-
-# %% [markdown]
-# Next, we'll write code that removes outliers. We'll identify such
-# observations by adopting the same approach that's used to create boxplots.
+# dataset may lead to poor results. For this reason, I'll implement a few
+# functions for removing outliers.
+#
+# I won't use these functions right away. Except for testing. I'm including
+# them here for the sake of organization. It makes sense to add the code for
+# removing outliers after the one for computing the features.
+#
+# ### IQR method
+#
+# To remove outliers, I'll use the interquartile range (IQR) method. A very
+# simple explanation of this method can be found
+# [here](https://online.stat.psu.edu/stat200/lesson/3/3.2). It's important to
+# note that, when we adopt this approach, the notion of an outlier is the same
+# as when creating a boxplot. So I'm going to remove the same outliers that
+# were shown [above](#rfm-boxplots).
+#
 # Figuring out the best way to do this:
 
 # %%
-# Compute quantiles and bounds
-cols = ["Frequency", "Monetary"]
-quantiles_and_bounds = (
+# Compute quartiles and bounds
+cols = ["Frequency", "Monetary"]  # just an example
+quartiles_and_bounds = (
     pd.concat(
         [
             df_rfm[cols].quantile(q=0.25).rename("Q1"),
@@ -334,11 +362,14 @@ quantiles_and_bounds = (
     )
     .transpose()
 )
-quantiles_and_bounds
+quartiles_and_bounds
+
+# %%
+bounds = quartiles_and_bounds.loc[["LowerBound", "UpperBound"], :]
+bounds
 
 # %%
 # Select indexes I want to KEEP
-bounds = quantiles_and_bounds.loc[["LowerBound", "UpperBound"], :]
 idxs = df_rfm.index
 
 for col in cols:
@@ -350,13 +381,21 @@ for col in cols:
 
 len(idxs)
 
+# %%
+# Remove outliers
+# df_rfm = df_rfm.loc[idxs, :]
+
 # %% [markdown]
 # Using the above code to define a couple of functions that allow us to remove
 # outliers:
 
 
 # %%
-def compute_outlier_bounds(df: pd.DataFrame, columns: str | list[str]) -> pd.DataFrame:
+def compute_outlier_bounds(
+    df: pd.DataFrame,
+    columns: str | list[str],
+    scale: float = 1.5,
+) -> pd.DataFrame:
     if isinstance(columns, str):
         columns = [columns]
     return (
@@ -369,31 +408,21 @@ def compute_outlier_bounds(df: pd.DataFrame, columns: str | list[str]) -> pd.Dat
         )
         .assign(
             IQR=lambda x: x.Q3 - x.Q1,
-            LowerBound=lambda x: x.Q1 - 1.5 * x.IQR,
-            UpperBound=lambda x: x.Q3 + 1.5 * x.IQR,
+            LowerBound=lambda x: x.Q1 - scale * x.IQR,
+            UpperBound=lambda x: x.Q3 + scale * x.IQR,
         )
         .transpose()
     ).loc[["LowerBound", "UpperBound"], :]
 
 
 # %%
-# Decorator that prints the number of rows dropped
-def count_dropped(func: Callable) -> Callable:
-    @functools.wraps(func)
-    def wrapper(df: pd.DataFrame, *args, **kwargs) -> pd.DataFrame:
-        size_before = df.shape[0]
-        df = func(df, *args, **kwargs)
-        num_dropped = size_before - df.shape[0]
-        print(f"Number of observations dropped: {num_dropped}")
-        return df
-
-    return wrapper
-
-
-# %%
 @count_dropped
-def remove_outliers(df: pd.DataFrame, columns: str | list[str]) -> pd.DataFrame:
-    bounds = compute_outlier_bounds(df, columns)
+def remove_outliers(
+    df: pd.DataFrame,
+    columns: str | list[str],
+    scale: float = 1.5,
+) -> pd.DataFrame:
+    bounds = compute_outlier_bounds(df, columns, scale)
     idxs = df.index
 
     if isinstance(columns, str):
@@ -656,7 +685,7 @@ def compute_and_save_rfm_scores(
     num_bins: int = 5,
     outlier_cols: str | list[str] | None = None,
 ) -> None:
-    df_rfm = read_prepared_data(file_path).pipe(compute_rfm_attributes)
+    df_rfm = read_customer_data(file_path).pipe(compute_rfm_attributes)
     if outlier_cols is not None:
         df_rfm = remove_outliers(df_rfm, outlier_cols)
     add_rfm_scores(df_rfm, num_bins).to_csv(
