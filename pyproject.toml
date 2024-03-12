@@ -1,4 +1,5 @@
 [tool.pyright]
+stubPath = "/home/woitek/python-type-stubs"
 useLibraryCodeForTypes = true
 analyzeUnannotatedFunctions = false
 reportUnnecessaryCast = "information"
@@ -17,7 +18,6 @@ select = [
   "C417",
   "E741",
   "EM",
-  # "F401",
   "F841",
   "FBT",
   "G004",
