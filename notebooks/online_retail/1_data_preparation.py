@@ -1,13 +1,26 @@
+# ---
+# jupyter:
+#   jupytext:
+#     cell_metadata_filter: -all
+#     formats: ipynb,py:percent
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.16.1
+#   kernelspec:
+#     display_name: Python 3 (ipykernel)
+#     language: python
+#     name: python3
+# ---
+
 # %% [markdown]
 # # Online Retail Dataset: Data Preparation
-#
 # In this notebook, I'll prepare the dataset for analysis.
-#
 # ## Imports
 
 # %%
 from pathlib import Path
-from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -36,7 +49,6 @@ df = pd.read_excel(
     },
     parse_dates=["InvoiceDate"],
 ).loc[:, cols]
-df = cast(pd.DataFrame, df)
 df.head(10)
 
 # %%
@@ -55,7 +67,6 @@ df.isna().sum()
 
 # %%
 df = df[df.CustomerID.notna()]
-df = cast(pd.DataFrame, df)
 df.info()
 
 # %% [markdown]
@@ -63,15 +74,10 @@ df.info()
 # this is the case:
 
 # %%
-ids = df.CustomerID.astype(str)
-ids = cast(pd.Series, ids)
+ids = df["CustomerID"].astype(str)
 assert ids.str.len().eq(5).all()
 assert ids.str.isdigit().all()
 del ids
-
-# %%
-# Use appropriate data type
-df.CustomerID = df.CustomerID.astype("category")
 
 # %% [markdown]
 # Looking for invalid quantities:
@@ -89,12 +95,19 @@ df.Quantity.le(0).sum()
 # %%
 df["InvoiceNo"].astype(str).str.startswith("C").sum()
 
+# %%
+tmp_df = df.loc[df["InvoiceNo"].astype(str).str.startswith("C"), ["InvoiceNo", "Quantity"]]
+tmp_df.head(10)
+
+# %%
+assert tmp_df.Quantity.le(0).all()
+del tmp_df
+
 # %% [markdown]
 # I chose to remove those rows:
 
 # %%
 df = df[df.Quantity > 0]
-df = cast(pd.DataFrame, df)
 
 # %% [markdown]
 # `InvoiceNo` is supposed to be a 6-digit integer number. Let's check that this
@@ -106,10 +119,6 @@ assert invoice_nums.str.startswith("C").sum() == 0
 assert invoice_nums.str.len().eq(6).all()
 assert invoice_nums.str.isdigit().all()
 del invoice_nums
-
-# %%
-# Use appropriate data type
-df.InvoiceNo = df.InvoiceNo.astype("category")
 
 # %% [markdown]
 # Looking for invalid prices:
@@ -128,10 +137,17 @@ df.UnitPrice.eq(0.0).sum()
 
 # %%
 df = df[df.UnitPrice > 0.0]
-df = cast(pd.DataFrame, df)
 
 # %% [markdown]
 # ## Finish fixing dataset
+
+# %%
+# Use appropriate data types
+df.InvoiceNo = df.InvoiceNo.astype("category")
+assert not df.InvoiceNo.cat.ordered
+
+df.CustomerID = df.CustomerID.astype("category")
+assert not df.CustomerID.cat.ordered
 
 # %%
 df = df.reset_index(drop=True)
@@ -163,15 +179,16 @@ def get_clean_data(file_path: Path) -> pd.DataFrame:
             "UnitPrice": np.float_,
         },
         parse_dates=["InvoiceDate"],
-    ).loc[:, cols]
-    df = df[df.CustomerID.notna()]
-    df.CustomerID = df.CustomerID.astype("category")
-    df = df[df.Quantity > 0]
-    df.InvoiceNo = df.InvoiceNo.astype("category")
-    df = df[df.UnitPrice > 0.0]
-    df = df.reset_index(drop=True)
-    df.InvoiceDate = df.InvoiceDate.dt.normalize()
-    return df
+    )
+    return (
+        df.loc[df.CustomerID.notna() & df.Quantity.gt(0) & df.UnitPrice.gt(0.0), cols]
+        .assign(
+            InvoiceNo=lambda x: x.InvoiceNo.astype("category"),
+            InvoiceDate=lambda x: x.InvoiceDate.dt.normalize(),
+            CustomerID=lambda x: x.CustomerID.astype("category"),
+        )
+        .reset_index(drop=True)
+    )
 
 
 # %%
@@ -182,7 +199,6 @@ del df_func
 
 # %% [markdown]
 # ## Aggregate data
-#
 # Before aggregating the data, I'll do some more consistency tests. Rows with
 # the same `InvoiceNo` must also have the same `InvoiceDate`. For a specific
 # value of `InvoiceNo`, this can be tested as follows:
@@ -213,41 +229,12 @@ assert df.groupby(by="InvoiceNo", observed=True).CustomerID.nunique().eq(1).all(
 # `InvoiceNo`.
 
 # %%
-# Figuring out how to do it
-tmp_df = df[df.InvoiceNo == 536365]
-tmp_df = cast(pd.DataFrame, tmp_df)
-tmp_df
-
-# %%
-tmp_row = pd.Series(
-    data={
-        "InvoiceDate": tmp_df["InvoiceDate"].iloc[0],
-        "CustomerID": tmp_df["CustomerID"].iloc[0],
-        "TotalPrice": (tmp_df["Quantity"] * tmp_df["UnitPrice"]).sum(),
-    }
-)
-tmp_row
-
-# %%
-del tmp_df
-del tmp_row
-
-
-# %%
-# Actual calculation
-def compute_total_price(df: pd.DataFrame) -> pd.Series:
-    return pd.Series(
-        data={
-            "InvoiceDate": df["InvoiceDate"].iloc[0],
-            "CustomerID": df["CustomerID"].iloc[0],
-            "TotalPrice": (df["Quantity"] * df["UnitPrice"]).sum(),
-        }
-    )
-
-
-# %%
 df_total = (
-    df.groupby(by="InvoiceNo", observed=True).apply(compute_total_price, include_groups=False).reset_index()
+    df.assign(Price=lambda x: x.Quantity * x.UnitPrice)
+    .groupby(by="InvoiceNo", observed=True)
+    .agg({"InvoiceDate": "first", "CustomerID": "first", "Price": "sum"})
+    .rename(columns={"Price": "TotalPrice"})
+    .reset_index()
 )
 df_total.head()
 
@@ -261,13 +248,19 @@ df_total.info()
 
 
 # %%
-def get_aggregated_data(file_path: Path) -> pd.DataFrame:
+def compute_total_price(df: pd.DataFrame) -> pd.DataFrame:
     return (
-        get_clean_data(file_path)
+        df.assign(Price=lambda x: x.Quantity * x.UnitPrice)
         .groupby(by="InvoiceNo", observed=True)
-        .apply(compute_total_price, include_groups=False)
+        .agg({"InvoiceDate": "first", "CustomerID": "first", "Price": "sum"})
+        .rename(columns={"Price": "TotalPrice"})
         .reset_index()
     )
+
+
+# %%
+def get_aggregated_data(file_path: Path) -> pd.DataFrame:
+    return get_clean_data(file_path).pipe(compute_total_price)
 
 
 # %%
@@ -278,7 +271,6 @@ del df_func
 
 # %% [markdown]
 # ## Save prepared data
-#
 # Clearly, I've ended up with a much smaller dataset than the original. To
 # avoid having to repeat the above steps, I'll save the new `DataFrame` to a
 # CSV file.
