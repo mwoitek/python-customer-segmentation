@@ -1,8 +1,22 @@
+# ---
+# jupyter:
+#   jupytext:
+#     cell_metadata_filter: -all
+#     formats: ipynb,py:percent
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.16.1
+#   kernelspec:
+#     display_name: Python 3 (ipykernel)
+#     language: python
+#     name: python3
+# ---
+
 # %% [markdown]
 # # Online Retail Dataset: RFM Scores
-#
 # In this notebook, I'll use the customer data to compute the RFM scores.
-#
 # ## Imports
 
 # %%
@@ -62,13 +76,11 @@ def read_customer_data(file_path: Path) -> pd.DataFrame:
 # %% [markdown]
 # ## Compute RFM attributes
 # ### Recency
-#
 # **To calculate the recency, I'll pretend that I'm performing this analysis 1
 # day after the last piece of data was collected.**
 
 # %%
 today = df["InvoiceDate"].max() + pd.Timedelta(days=1)
-today = cast(pd.Timestamp, today)
 today
 
 # %% [markdown]
@@ -95,18 +107,14 @@ recency.loc["14688"]
 # %%
 df_rfm = (
     df.groupby(by="CustomerID", observed=True)
-    .InvoiceDate.max()
-    .to_frame()
-    .rename(columns={"InvoiceDate": "LastPurchaseDate"})
+    .agg(LastPurchaseDate=pd.NamedAgg(column="InvoiceDate", aggfunc="max"))
     .assign(Recency=lambda x: (today - x.LastPurchaseDate).dt.days)
     .drop(columns="LastPurchaseDate")
 )
-df_rfm = cast(pd.DataFrame, df_rfm)
-df_rfm.head()
+df_rfm.head(15)
 
 # %% [markdown]
 # ### Frequency
-#
 # Here I'll use the following definition of frequency: for a given customer,
 # frequency is the total number of purchases he/she made. Figuring out the best
 # way to evaluate this metric:
@@ -146,11 +154,10 @@ assert_index_equal(df_rfm.index, freq_1.index)
 
 # %%
 df_rfm["Frequency"] = df.groupby(by="CustomerID", observed=True).InvoiceNo.count()
-df_rfm.head()
+df_rfm.head(15)
 
 # %% [markdown]
 # ### Monetary
-#
 # Here I'll use the following definition of monetary (value): for a given
 # customer, monetary corresponds to the total amount spent by him/her. Figuring
 # out the best way to evaluate this quantity:
@@ -177,7 +184,7 @@ assert_index_equal(df_rfm.index, monetary.index)
 
 # %%
 df_rfm["Monetary"] = df.groupby(by="CustomerID", observed=True).TotalPrice.sum()
-df_rfm.head()
+df_rfm.head(15)
 
 # %%
 df_rfm.info()
@@ -199,9 +206,7 @@ def compute_rfm_attributes(df: pd.DataFrame) -> pd.DataFrame:
     today = df.InvoiceDate.max() + pd.Timedelta(days=1)
     customer_groups = df.groupby(by="CustomerID", observed=True)
     return (
-        customer_groups.InvoiceDate.max()
-        .to_frame()
-        .rename(columns={"InvoiceDate": "LastPurchaseDate"})
+        customer_groups.agg(LastPurchaseDate=pd.NamedAgg(column="InvoiceDate", aggfunc="max"))
         .assign(
             Recency=lambda x: (today - x.LastPurchaseDate).dt.days,
             Frequency=customer_groups.InvoiceNo.count(),
@@ -226,7 +231,7 @@ del rfm_attrs
 
 # %% [markdown]
 # ## Visualizing RFM attributes
-# ### Boxplots {#rfm-boxplots}
+# ### Boxplots
 
 # %%
 RFM_UNITS = {
@@ -243,7 +248,7 @@ def boxplot_rfm(
 ) -> None:
     fig = plt.figure(figsize=figsize, layout="tight")
     ax = fig.add_subplot()
-    ax.boxplot(df[attr], showfliers=True)
+    ax.boxplot(df[attr])
     ax.set_title(f"Boxplot of {attr}")
     ax.set_xticks([])
     ax.set_ylabel(f"{attr} ({RFM_UNITS[attr]})")
@@ -270,7 +275,6 @@ boxplot_rfm(df_rfm, "Monetary")
 # that such customers make purchases very frequently, and spend a good amount
 # of money. This explains at least a portion of the outliers for `Frequency`
 # and `Monetary`.
-#
 # ### KDE plots
 
 
@@ -448,7 +452,7 @@ def remove_outliers(
 # %% [markdown]
 # ## Compute RFM scores
 #
-# Finally, it's possible to compute the RFM scores. To do so, I'll use the
+# Finally, it's time to compute the RFM scores. To do so, I'll use the
 # `add_rfm_scores` function that I defined in the `utils` package:
 
 # %%
@@ -462,7 +466,7 @@ df_rfm.info()
 # ## Save computed scores
 
 # %%
-# File path for output CSV
+# Path to output CSV
 out_file = file_path.parent / "rfm_scores.csv"
 
 df_rfm.to_csv(out_file, index=True)
@@ -474,8 +478,8 @@ df_rfm.to_csv(out_file, index=True)
 # Check that every bin contains approximately the same number of customers:
 
 # %%
-fig, ax = plt.subplots(figsize=(8.0, 6.0), layout="tight")
-ax = cast(Axes, ax)
+fig = plt.figure(figsize=(8.0, 6.0), layout="tight")
+ax = fig.add_subplot()
 sns.countplot(data=df_rfm, x="RScore", ax=ax)
 ax.set_title("R Score: # Customers in each bin")
 ax.set_xlabel("R Score")
