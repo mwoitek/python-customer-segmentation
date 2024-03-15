@@ -28,11 +28,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from matplotlib.axes import Axes
 from matplotlib.ticker import AutoMinorLocator
 from pandas.testing import assert_frame_equal, assert_index_equal, assert_series_equal
 
-from utils.decorators import count_dropped
 from utils.rfm import RFMAttribute, add_rfm_scores
 
 # %% [markdown]
@@ -327,7 +325,6 @@ correlation_heatmap(df_rfm)
 
 # %% [markdown]
 # ## Dealing with outliers
-#
 # Later, I'll use the RFM attributes to do customer segmentation with the aid
 # of clustering algorithms. In these cases, the presence of outliers in the
 # dataset may lead to poor results. For this reason, I'll implement a few
@@ -336,15 +333,13 @@ correlation_heatmap(df_rfm)
 # I won't use these functions right away. Except for testing. I'm including
 # them here for the sake of organization. It makes sense to add the code for
 # removing outliers after the one for computing the features.
-#
 # ### IQR method
-#
 # To remove outliers, I'll use the interquartile range (IQR) method. A very
 # simple explanation of this method can be found
 # [here](https://online.stat.psu.edu/stat200/lesson/3/3.2). It's important to
 # note that, when we adopt this approach, the notion of an outlier is the same
 # as when creating a boxplot. So I'm going to remove the same outliers that
-# were shown [above](#rfm-boxplots).
+# were shown above.
 #
 # Figuring out the best way to do this:
 
@@ -383,11 +378,20 @@ for col in cols:
     mask_upper = df_rfm[col] > bounds.loc["UpperBound", col]
     idxs = idxs.drop(df_rfm[mask_upper].index, errors="ignore")
 
-len(idxs)
-
 # %%
 # Remove outliers
-# df_rfm = df_rfm.loc[idxs, :]
+df_no_out = df_rfm.loc[idxs, :]
+
+# %% [markdown]
+# Check by recreating the boxplots:
+
+# %%
+# Frequency
+boxplot_rfm(df_no_out, "Frequency")
+
+# %%
+# Monetary
+boxplot_rfm(df_no_out, "Monetary")
 
 # %% [markdown]
 # Using the above code to define a couple of functions that allow us to remove
@@ -395,11 +399,7 @@ len(idxs)
 
 
 # %%
-def compute_outlier_bounds(
-    df: pd.DataFrame,
-    columns: str | list[str],
-    scale: float = 1.5,
-) -> pd.DataFrame:
+def compute_outlier_bounds(df: pd.DataFrame, columns: str | list[str], scale: float = 1.5) -> pd.DataFrame:
     if isinstance(columns, str):
         columns = [columns]
     return (
@@ -416,16 +416,12 @@ def compute_outlier_bounds(
             UpperBound=lambda x: x.Q3 + scale * x.IQR,
         )
         .transpose()
-    ).loc[["LowerBound", "UpperBound"], :]
+        .loc[["LowerBound", "UpperBound"], :]
+    )
 
 
 # %%
-@count_dropped
-def remove_outliers(
-    df: pd.DataFrame,
-    columns: str | list[str],
-    scale: float = 1.5,
-) -> pd.DataFrame:
+def remove_outliers(df: pd.DataFrame, columns: str | list[str], scale: float = 1.5) -> pd.DataFrame:
     bounds = compute_outlier_bounds(df, columns, scale)
     idxs = df.index
 
@@ -447,11 +443,14 @@ def remove_outliers(
 # testing.
 
 # Remove outliers from `Frequency` and `Monetary`
-# df_rfm = remove_outliers(df_rfm, columns=["Frequency", "Monetary"])
+df_func = remove_outliers(df_rfm, columns=["Frequency", "Monetary"])
+
+# %%
+assert_frame_equal(df_func, df_no_out)
+del df_func
 
 # %% [markdown]
 # ## Compute RFM scores
-#
 # Finally, it's time to compute the RFM scores. To do so, I'll use the
 # `add_rfm_scores` function that I defined in the `utils` package:
 
@@ -467,36 +466,32 @@ df_rfm.info()
 
 # %%
 # Path to output CSV
-out_file = file_path.parent / "rfm_scores.csv"
+out_file = file_path.parent / "rfm_scores_5.csv"
 
-df_rfm.to_csv(out_file, index=True)
+df_rfm.to_csv(out_file)
 
 # %% [markdown]
 # ## Visualization
 # ### Recency and R score
-#
 # Check that every bin contains approximately the same number of customers:
 
 # %%
 fig = plt.figure(figsize=(8.0, 6.0), layout="tight")
 ax = fig.add_subplot()
 sns.countplot(data=df_rfm, x="RScore", ax=ax)
+ax.bar_label(ax.containers[0])  # pyright: ignore [reportArgumentType]
 ax.set_title("R Score: # Customers in each bin")
 ax.set_xlabel("R Score")
 ax.set_ylabel("Count")
 ax.yaxis.set_minor_locator(AutoMinorLocator(4))
 plt.show()
 
-# %%
-# These are the values shown above:
-df_rfm["RScore"].value_counts(sort=False)
-
 # %% [markdown]
 # Distribution of `Recency` for each R score:
 
 # %%
-fig, ax = plt.subplots(figsize=(8.0, 6.0), layout="tight")
-ax = cast(Axes, ax)
+fig = plt.figure(figsize=(8.0, 6.0), layout="tight")
+ax = fig.add_subplot()
 sns.boxplot(data=df_rfm, x="RScore", y="Recency", ax=ax)
 ax.set_title("Recency: Distribution for each R score")
 ax.set_xlabel("R Score")
@@ -511,7 +506,6 @@ df_rfm.loc[df_rfm["RScore"] == 1, "Recency"].describe()
 
 # %% [markdown]
 # ### Frequency and F score
-#
 # Next, we're going to do something very similar to what we've done above. Then
 # it's convenient to use this code to define a couple of functions:
 
@@ -519,7 +513,6 @@ df_rfm.loc[df_rfm["RScore"] == 1, "Recency"].describe()
 # Path to images directory
 IMG_DIR = Path.cwd().parents[1] / "img"
 assert IMG_DIR.exists(), f"directory doesn't exist: {IMG_DIR}"
-assert IMG_DIR.is_dir(), f"not a directory: {IMG_DIR}"
 
 
 # %%
@@ -530,10 +523,12 @@ def plot_bin_count(
     save: bool = False,
     figsize: tuple[float, float] = (8.0, 6.0),
 ) -> None:
-    fig, ax = plt.subplots(figsize=figsize, layout="tight")
-    ax = cast(Axes, ax)
+    fig = plt.figure(figsize=figsize, layout="tight")
+    ax = fig.add_subplot()
 
     sns.countplot(data=df, x=f"{score}Score", ax=ax)
+    ax.bar_label(ax.containers[0])  # pyright: ignore [reportArgumentType]
+
     ax.set_title(f"{score} Score: # Customers in each bin")
     ax.set_xlabel(f"{score} Score")
     ax.set_ylabel("Count")
@@ -554,8 +549,8 @@ def plot_distribution_by_score(
     save: bool = False,
     figsize: tuple[float, float] = (8.0, 6.0),
 ) -> None:
-    fig, ax = plt.subplots(figsize=figsize, layout="tight")
-    ax = cast(Axes, ax)
+    fig = plt.figure(figsize=figsize, layout="tight")
+    ax = fig.add_subplot()
 
     first_letter = attr[0]
     sns.boxplot(
@@ -567,18 +562,11 @@ def plot_distribution_by_score(
         # that makes sense. For this reason, I'll hide the outliers.
         showfliers=False,
     )
+
     ax.set_title(f"{attr}: Distribution for each {first_letter} score")
     ax.set_xlabel(f"{first_letter} Score")
+    ax.set_ylabel(f"{attr} ({RFM_UNITS[attr]})")
     ax.set_ylim(bottom=0)
-
-    match attr:
-        case "Recency":
-            unit = "days"
-        case "Frequency":
-            unit = "purchases"
-        case "Monetary":
-            unit = "£"
-    ax.set_ylabel(f"{attr} ({unit})")
 
     if save:
         out_img = IMG_DIR / f"{attr.lower()}_distribution.png"
@@ -643,8 +631,8 @@ np.sort(df_rfm.loc[df_rfm.FScore == 5, "Frequency"].unique())
 # time, we won't hide the outliers. The desired plot can be created as follows:
 
 # %%
-fig, ax = plt.subplots(figsize=(6.0, 6.0), layout="tight")
-ax = cast(Axes, ax)
+fig = plt.figure(figsize=(6.0, 6.0), layout="tight")
+ax = fig.add_subplot()
 ax.boxplot(df_rfm.loc[df_rfm.FScore == 5, "Frequency"])
 ax.set_title("Frequency: Distribution for F Score = 5")
 ax.set_xticks([])
@@ -653,20 +641,7 @@ ax.set_ylim(bottom=0)
 plt.show()
 
 # %% [markdown]
-# A lot of what was presented above makes even more sense when we look at the
-# density estimate for `Frequency`:
-
-# %%
-fig, ax = plt.subplots(figsize=(8.0, 6.0), layout="tight")
-ax = cast(Axes, ax)
-sns.kdeplot(data=df_rfm, x="Frequency", ax=ax)
-ax.set_title("KDE for Frequency")
-ax.set_xlabel("Frequency (purchases)")
-plt.show()
-
-# %% [markdown]
 # ### Monetary value and M score
-#
 # In this case, each bin has approximately the same number of customers:
 
 # %%
@@ -677,7 +652,6 @@ plot_distribution_by_score(df_rfm, "Monetary")
 
 # %% [markdown]
 # ## Summarizing through functions
-#
 # The RFM analysis isn't complete yet. But I've already achieved my goal for
 # this notebook. As usual, I'll conclude by writing a couple of functions that
 # summarize what I just did.
@@ -686,27 +660,23 @@ plot_distribution_by_score(df_rfm, "Monetary")
 # %%
 def compute_and_save_rfm_scores(
     file_path: Path,
-    num_bins: int = 5,
+    *,
     outlier_cols: str | list[str] | None = None,
+    outlier_scale: float = 1.5,
+    num_bins: int = 5,
 ) -> None:
     df_rfm = read_customer_data(file_path).pipe(compute_rfm_attributes)
     if outlier_cols is not None:
-        df_rfm = remove_outliers(df_rfm, outlier_cols)
-    add_rfm_scores(df_rfm, num_bins).to_csv(
-        file_path.parent / f"rfm_scores_{num_bins}.csv",
-        index=True,
-    )
+        df_rfm = remove_outliers(df_rfm, outlier_cols, outlier_scale)
+    add_rfm_scores(df_rfm, num_bins).to_csv(file_path.parent / f"rfm_scores_{num_bins}.csv")
 
 
 # %%
-compute_and_save_rfm_scores(Path.cwd().parents[1] / "data" / "online_retail.csv", num_bins=5)
+compute_and_save_rfm_scores(Path.cwd().parents[1] / "data" / "online_retail.csv")
 
 
 # %%
-def plot_rfm_attributes_and_scores(
-    df: pd.DataFrame,
-    figsize: tuple[float, float] = (8.0, 6.0),
-) -> None:
+def plot_rfm_attributes_and_scores(df: pd.DataFrame, figsize: tuple[float, float] = (8.0, 6.0)) -> None:
     attrs = get_args(RFMAttribute)
     for score in (attr[0] for attr in attrs):
         plot_bin_count(df, score, save=True, figsize=figsize)
