@@ -14,6 +14,7 @@ RFMAttribute = Literal["Recency", "Frequency", "Monetary"]
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 IMG_DIR = Path(__file__).resolve().parents[1] / "img"
 
+RFM_UNITS = {"Recency": "days", "Frequency": "purchases", "Monetary": "£"}
 SEGMENTS_5 = {
     "5,5,5": "Champions",
     "5,5,4": "Champions",
@@ -173,10 +174,12 @@ def plot_bin_count(
     save: bool = False,
     figsize: tuple[float, float] = (8.0, 6.0),
 ) -> None:
-    fig, ax = plt.subplots(figsize=figsize, layout="tight")
-    ax = cast(Axes, ax)
+    fig = plt.figure(figsize=figsize, layout="tight")
+    ax = fig.add_subplot()
 
     sns.countplot(data=df, x=f"{score}Score", ax=ax)
+    ax.bar_label(ax.containers[0])  # pyright: ignore [reportArgumentType]
+
     ax.set_title(f"{score} Score: # Customers in each bin")
     ax.set_xlabel(f"{score} Score")
     ax.set_ylabel("Count")
@@ -196,8 +199,8 @@ def plot_distribution_by_score(
     save: bool = False,
     figsize: tuple[float, float] = (8.0, 6.0),
 ) -> None:
-    fig, ax = plt.subplots(figsize=figsize, layout="tight")
-    ax = cast(Axes, ax)
+    fig = plt.figure(figsize=figsize, layout="tight")
+    ax = fig.add_subplot()
 
     first_letter = attr[0]
     sns.boxplot(
@@ -209,18 +212,11 @@ def plot_distribution_by_score(
         # that makes sense. For this reason, I'll hide the outliers.
         showfliers=False,
     )
+
     ax.set_title(f"{attr}: Distribution for each {first_letter} score")
     ax.set_xlabel(f"{first_letter} Score")
+    ax.set_ylabel(f"{attr} ({RFM_UNITS[attr]})")
     ax.set_ylim(bottom=0)
-
-    match attr:
-        case "Recency":
-            unit = "days"
-        case "Frequency":
-            unit = "purchases"
-        case "Monetary":
-            unit = "£"
-    ax.set_ylabel(f"{attr} ({unit})")
 
     if save:
         out_img = IMG_DIR / f"{attr.lower()}_distribution.png"
@@ -230,10 +226,7 @@ def plot_distribution_by_score(
         plt.show()
 
 
-def plot_rfm_attributes_and_scores(
-    df: pd.DataFrame,
-    figsize: tuple[float, float] = (8.0, 6.0),
-) -> None:
+def plot_rfm_attributes_and_scores(df: pd.DataFrame, figsize: tuple[float, float] = (8.0, 6.0)) -> None:
     attrs = get_args(RFMAttribute)
     for score in (attr[0] for attr in attrs):
         plot_bin_count(df, score, save=True, figsize=figsize)
