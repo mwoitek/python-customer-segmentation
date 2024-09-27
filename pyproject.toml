@@ -1,14 +1,15 @@
 [tool.pyright]
-stubPath = "/home/woitek/python-type-stubs"
-useLibraryCodeForTypes = true
 analyzeUnannotatedFunctions = false
 reportUnnecessaryCast = "information"
-reportUnusedExpression = false
 reportUnnecessaryTypeIgnoreComment = "information"
+reportUnusedExpression = false
+stubPath = "/home/woitek/python-type-stubs"
+typeCheckingMode = "basic"
+useLibraryCodeForTypes = true
 
 [tool.ruff]
 line-length = 110
-target-version = "py311"
+target-version = "py312"
 unsafe-fixes = false
 
 [tool.ruff.lint]
