@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.16.4
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -28,6 +28,9 @@ import requests
 
 # %%
 data_dir = Path.cwd().parents[1] / "data"
+print(data_dir)
+
+# %%
 if not data_dir.exists():
     data_dir.mkdir()
 
@@ -42,7 +45,7 @@ assert not zip_path.with_suffix(".xlsx").exists(), "dataset already exists"
 
 # %%
 response = requests.get(url, stream=True)  # noqa: S113
-assert response.status_code == 200, "failed to download zip file"
+assert response.status_code == requests.codes.ok, "failed to download zip file"
 
 # %%
 with zip_path.open("wb") as file:
@@ -68,4 +71,4 @@ old_file_path = data_dir / old_name
 new_name = old_name.lower().replace(" ", "_")
 new_file_path = old_file_path.with_name(new_name)
 
-_ = old_file_path.rename(new_file_path)
+old_file_path.rename(new_file_path)
