@@ -16,6 +16,7 @@ requests = "*"
 scikit-learn = "*"
 seaborn = "*"
 yellowbrick = "*"
+connectorx = "*"
 
 [dev-packages]
 jupytext = "*"
